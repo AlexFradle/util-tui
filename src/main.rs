@@ -10,6 +10,7 @@ use tui::{
 };
 
 mod app;
+mod calendar;
 mod list;
 mod progress_bar;
 mod styles;
@@ -18,6 +19,7 @@ mod ui;
 
 use crate::app::App;
 use crate::ui::ui;
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, Utc};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
