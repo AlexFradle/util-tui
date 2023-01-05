@@ -10,10 +10,19 @@ use crate::{app::App, calendar::Calendar, progress_bar::ProgressBar, styles::App
 
 pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_layout = Layout::default()
-        .constraints([Constraint::Percentage(100)])
+        .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
+    let b = Block::default()
+        .title("Calendar")
+        .borders(Borders::ALL)
+        .title_alignment(Alignment::Center);
+    f.render_widget(b, main_layout[0]);
+
+    let l = Layout::default()
+        .constraints([Constraint::Percentage(100)].as_ref())
+        .split(main_layout[0]);
     let c = Calendar::new();
-    c.render(f, main_layout[0]);
+    f.render_widget(c, l[0]);
     //     let rects = Layout::default()
     //         .constraints(
     //             [
