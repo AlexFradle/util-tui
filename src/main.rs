@@ -19,7 +19,6 @@ mod ui;
 
 use crate::app::App;
 use crate::ui::ui;
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, Utc};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -64,6 +63,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Err(e) => println!("{e}"),
                 },
                 KeyCode::Char('x') => app.progress += 1,
+                KeyCode::Char('l') => app.calendar.state.increment_month(1),
+                KeyCode::Char('p') => app.calendar.state.increment_month(-1),
                 _ => {}
             }
         }

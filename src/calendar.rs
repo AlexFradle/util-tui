@@ -1,22 +1,133 @@
-use chrono::{DateTime, Datelike, Local, NaiveDate, Weekday};
+use chrono::{DateTime, Datelike, Local, Month, NaiveDate, Weekday};
+use num_traits::FromPrimitive;
 use tui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
     style::{Color, Style},
-    widgets::{Block, BorderType, Borders, Widget},
+    widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
 };
+
+pub struct CalendarState {
+    pub selected: u8,
+    pub cur_day: u32,
+    pub cur_month: Month,
+    pub cur_year: i32,
+    pub num_of_days: i64,
+    pub start_day: u32,
+}
+
+impl CalendarState {
+    pub fn new() -> CalendarState {
+        let local_time: DateTime<Local> = Local::now();
+        let cur_day = local_time.day();
+        let cur_month = local_time.month();
+        let cur_year = local_time.year();
+        // Mon 01 Jan 2022
+        // let date_string = format!("{}", local_time.format("%a %d %b %Y"));
+        let num_of_days = NaiveDate::from_ymd(
+            match cur_month {
+                12 => cur_year + 1,
+                _ => cur_year,
+            },
+            match cur_month {
+                12 => 1,
+                _ => cur_month + 1,
+            },
+            1,
+        )
+        .signed_duration_since(NaiveDate::from_ymd(cur_year, cur_month, 1))
+        .num_days();
+        // 0 = Monday, 6 = Sunday
+        let start_day = NaiveDate::from_ymd(cur_year, cur_month, 1)
+            .weekday()
+            .number_from_monday()
+            - 1;
+
+        CalendarState {
+            selected: 0,
+            cur_day,
+            cur_month: Month::from_u32(cur_month).unwrap(),
+            cur_year,
+            num_of_days,
+            start_day,
+        }
+    }
+
+    fn set_num_of_days(&mut self) {
+        let cm = self.cur_month.number_from_month();
+        self.num_of_days = NaiveDate::from_ymd(
+            match cm {
+                12 => self.cur_year + 1,
+                _ => self.cur_year,
+            },
+            match cm {
+                12 => 1,
+                _ => cm + 1,
+            },
+            1,
+        )
+        .signed_duration_since(NaiveDate::from_ymd(self.cur_year, cm, 1))
+        .num_days();
+    }
+
+    fn set_start_day(&mut self) {
+        self.start_day = NaiveDate::from_ymd(self.cur_year, self.cur_month.number_from_month(), 1)
+            .weekday()
+            .number_from_monday()
+            - 1;
+    }
+
+    pub fn increment_month(&mut self, amount: i32) {
+        let mut new_month: Month = self.cur_month;
+        for _ in 0..amount.abs() {
+            if amount.is_positive() {
+                new_month = new_month.succ();
+                if new_month == Month::January {
+                    self.cur_year += 1;
+                }
+            } else {
+                new_month = new_month.pred();
+                if new_month == Month::December {
+                    self.cur_year -= 1;
+                }
+            }
+        }
+        self.cur_month = new_month;
+        self.set_start_day();
+        self.set_num_of_days();
+    }
+}
+
+pub struct CalendarObj<'a> {
+    pub state: CalendarState,
+    pub pointless: &'a str,
+}
+
+impl<'a> CalendarObj<'a> {
+    pub fn new() -> CalendarObj<'a> {
+        CalendarObj {
+            state: CalendarState::new(),
+            pointless: "dsa",
+        }
+    }
+
+    pub fn get_calendar(&self) -> Calendar<'a> {
+        Calendar::new()
+    }
+
+    pub fn next_month(&mut self) {
+        self.state.increment_month(1);
+    }
+}
 
 pub struct Calendar<'a> {
     pub data: Vec<(u8, &'a str)>,
-    pub selected: u8,
-    date_string: String,
-    num_of_days: i64,
-    start_day: u32,
-    cur_day: u32,
 }
 
-impl<'a> Widget for Calendar<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl<'a> StatefulWidget for Calendar<'a> {
+    type State = CalendarState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         // + 1 to avoid border
         let cx = area.left() + 1;
         // + 1 to avoid border
@@ -28,6 +139,14 @@ impl<'a> Widget for Calendar<'a> {
         let cell_width = width / 7;
         let cell_height = height / 6;
 
+        let month_str = format!("{} {}", state.cur_month.name(), state.cur_year);
+        buf.set_string(
+            cx + width / 2 - (month_str.len() / 2) as u16,
+            cy,
+            month_str,
+            Style::default(),
+        );
+
         let borders = Borders::ALL;
 
         let offset_x = (width - cell_width * 7) / 2;
@@ -37,7 +156,7 @@ impl<'a> Widget for Calendar<'a> {
         for i in 0..7 {
             let rect = Rect {
                 x: (i as u16 * cell_width) + cx + offset_x,
-                y: 1,
+                y: 2,
                 width: cell_width,
                 height: cell_height,
             };
@@ -47,19 +166,19 @@ impl<'a> Widget for Calendar<'a> {
 
         for i in 0..6 {
             for j in 0..7 {
-                let mut day: i64 = ((j + 1) + (7 * i) as i64) - self.start_day as i64;
-                if day < 1 || day > self.num_of_days {
+                let mut day: i64 = ((j + 1) + (7 * i) as i64) - state.start_day as i64;
+                if day < 1 || day > state.num_of_days {
                     day = 0;
                 }
 
-                let border_type = if day == self.cur_day as i64 {
+                let border_type = if day == state.cur_day as i64 {
                     BorderType::Double
                 } else {
                     BorderType::Plain
                 };
                 let border_style = if day == 0 {
                     Style::default().fg(Color::Rgb(32, 32, 32))
-                } else if day == self.cur_day as i64 {
+                } else if day == state.cur_day as i64 {
                     Style::default().fg(Color::Green)
                 } else {
                     Style::default()
@@ -138,42 +257,13 @@ impl<'a> Widget for Calendar<'a> {
 
 impl<'a> Calendar<'a> {
     pub fn new() -> Calendar<'a> {
-        let local_time: DateTime<Local> = Local::now();
-        let cur_day = local_time.day();
-        let cur_month = local_time.month();
-        let cur_year = local_time.year();
-        // Mon 01 Jan 2022
-        let date_string = format!("{}", local_time.format("%a %d %b %Y"));
-        let num_of_days = NaiveDate::from_ymd(
-            match cur_month {
-                12 => cur_year + 1,
-                _ => cur_year,
-            },
-            match cur_month {
-                12 => 1,
-                _ => cur_month + 1,
-            },
-            1,
-        )
-        .signed_duration_since(NaiveDate::from_ymd(cur_year, cur_month, 1))
-        .num_days();
-        // 0 = Monday, 6 = Sunday
-        let start_day = NaiveDate::from_ymd(cur_year, cur_month, 1)
-            .weekday()
-            .number_from_monday()
-            - 1;
-
-        Calendar {
-            data: vec![],
-            selected: 0,
-            date_string,
-            num_of_days,
-            start_day,
-            cur_day,
-        }
+        Calendar { data: vec![] }
     }
+}
 
-    pub fn change_selected(&mut self, new_index: u8) {
-        self.selected = new_index;
+impl<'a> Widget for Calendar<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut state = CalendarState::new();
+        StatefulWidget::render(self, area, buf, &mut state);
     }
 }

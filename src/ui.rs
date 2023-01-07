@@ -6,23 +6,19 @@ use tui::{
     Frame, Terminal,
 };
 
-use crate::{app::App, calendar::Calendar, progress_bar::ProgressBar, styles::AppStyles};
+use crate::{app::App, calendar::CalendarObj, progress_bar::ProgressBar, styles::AppStyles};
 
 pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_layout = Layout::default()
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
-    let b = Block::default()
-        .title("Calendar")
-        .borders(Borders::ALL)
-        .title_alignment(Alignment::Center);
+    let b = Block::default().title("Calendar").borders(Borders::ALL);
     f.render_widget(b, main_layout[0]);
 
     let l = Layout::default()
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(main_layout[0]);
-    let c = Calendar::new();
-    f.render_widget(c, l[0]);
+    f.render_stateful_widget(app.calendar.get_calendar(), l[0], &mut app.calendar.state);
     //     let rects = Layout::default()
     //         .constraints(
     //             [
