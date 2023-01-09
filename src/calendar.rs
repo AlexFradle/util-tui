@@ -7,8 +7,10 @@ use tui::{
     widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
 };
 
+use crate::styles::AppStyles;
+
 pub struct CalendarState {
-    pub selected: u8,
+    pub selected: u32,
     pub cur_day: u32,
     pub cur_month: Month,
     pub cur_year: i32,
@@ -44,7 +46,7 @@ impl CalendarState {
             - 1;
 
         CalendarState {
-            selected: 0,
+            selected: cur_day,
             cur_day,
             cur_month: Month::from_u32(cur_month).unwrap(),
             cur_year,
@@ -95,6 +97,14 @@ impl CalendarState {
         self.cur_month = new_month;
         self.set_start_day();
         self.set_num_of_days();
+    }
+
+    pub fn increment_selected(&mut self, amount: i32) {
+        if self.selected > 1 && amount.is_negative() {
+            self.selected -= amount.abs() as u32;
+        } else if self.selected < self.num_of_days as u32 && amount.is_positive() {
+            self.selected += amount.abs() as u32;
+        }
     }
 }
 
@@ -161,7 +171,7 @@ impl<'a> StatefulWidget for Calendar<'a> {
                 height: cell_height,
             };
             day_name = day_name.succ();
-            buf.set_string(rect.x, rect.y, day_name.to_string(), Style::default());
+            buf.set_string(rect.x, rect.y, day_name.to_string(), AppStyles::Main.get());
         }
 
         for i in 0..6 {
@@ -177,11 +187,13 @@ impl<'a> StatefulWidget for Calendar<'a> {
                     BorderType::Plain
                 };
                 let border_style = if day == 0 {
-                    Style::default().fg(Color::Rgb(32, 32, 32))
+                    Style::default().fg(Color::Black)
+                } else if day == state.selected as i64 {
+                    AppStyles::CalendarSelected.get()
                 } else if day == state.cur_day as i64 {
-                    Style::default().fg(Color::Green)
+                    AppStyles::CalendarCurDay.get()
                 } else {
-                    Style::default()
+                    AppStyles::CalendarDeselected.get()
                 };
                 let symbols = BorderType::line_symbols(border_type);
 

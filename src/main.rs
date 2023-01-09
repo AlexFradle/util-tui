@@ -65,6 +65,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 KeyCode::Char('x') => app.progress += 1,
                 KeyCode::Char('l') => app.calendar.state.increment_month(1),
                 KeyCode::Char('p') => app.calendar.state.increment_month(-1),
+                KeyCode::Left => app.calendar.state.increment_selected(-1),
+                KeyCode::Right => app.calendar.state.increment_selected(1),
                 _ => {}
             }
         }

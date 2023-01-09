@@ -12,7 +12,10 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_layout = Layout::default()
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(f.size());
-    let b = Block::default().title("Calendar").borders(Borders::ALL);
+    let b = Block::default()
+        .title("Calendar")
+        .borders(Borders::ALL)
+        .style(AppStyles::Main.get());
     f.render_widget(b, main_layout[0]);
 
     let l = Layout::default()
