@@ -3,11 +3,12 @@ use num_traits::FromPrimitive;
 use tui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
 };
 
 use crate::styles::AppStyles;
+use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
 
 pub struct CalendarState {
     pub selected: u32,
@@ -213,10 +214,24 @@ impl<'a> StatefulWidget for Calendar<'a> {
                     }
                 }
                 if borders.intersects(Borders::TOP) {
-                    for x in rect.left()..rect.right() {
-                        buf.get_mut(x, rect.top())
-                            .set_symbol(symbols.horizontal)
-                            .set_style(border_style);
+                    if day == state.selected as i64 {
+                        for x in rect.left()..rect.right() {
+                            buf.get_mut(x, rect.top())
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
+                    } else {
+                        for i in 0..3 {
+                            buf.get_mut(rect.left() + i, rect.top())
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
+                        let diff = rect.right() - rect.left();
+                        for i in (diff - 3)..diff {
+                            buf.get_mut(rect.left() + i, rect.top())
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
                     }
                 }
                 if borders.intersects(Borders::RIGHT) {
@@ -229,10 +244,24 @@ impl<'a> StatefulWidget for Calendar<'a> {
                 }
                 if borders.intersects(Borders::BOTTOM) {
                     let y = rect.bottom() - 1;
-                    for x in rect.left()..rect.right() {
-                        buf.get_mut(x, y)
-                            .set_symbol(symbols.horizontal)
-                            .set_style(border_style);
+                    if day == state.selected as i64 {
+                        for x in rect.left()..rect.right() {
+                            buf.get_mut(x, y)
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
+                    } else {
+                        for i in 0..3 {
+                            buf.get_mut(rect.left() + i, y)
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
+                        let diff = rect.right() - rect.left();
+                        for i in (diff - 3)..diff {
+                            buf.get_mut(rect.left() + i, y)
+                                .set_symbol(symbols.horizontal)
+                                .set_style(border_style);
+                        }
                     }
                 }
 
@@ -260,7 +289,30 @@ impl<'a> StatefulWidget for Calendar<'a> {
 
                 // write day number
                 if day > 0 {
-                    buf.set_string(rect.left(), rect.top(), day.to_string(), Style::default());
+                    buf.set_string(
+                        rect.left() + rect.width / 2
+                            - (day.to_string().len() as f32 / 2.0).ceil() as u16,
+                        rect.top(),
+                        if day.to_string().len() == 1 {
+                            format!("0{}", day.to_string())
+                        } else {
+                            day.to_string()
+                        },
+                        if day == state.cur_day as i64 {
+                            AppStyles::CalendarCurDay
+                                .get()
+                                .add_modifier(Modifier::UNDERLINED)
+                                .fg(if day == state.selected as i64 {
+                                    MAIN_COLOR
+                                } else {
+                                    ACCENT_COLOR
+                                })
+                        } else if day == state.selected as i64 {
+                            AppStyles::CalendarSelected.get()
+                        } else {
+                            AppStyles::CalendarDeselected.get()
+                        },
+                    );
                 }
             }
         }
