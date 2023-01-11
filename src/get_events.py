@@ -2,21 +2,20 @@ from __future__ import print_function
 
 import datetime
 import os.path
+import sys
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import json
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
 
 def main():
-    """Shows basic usage of the Google Calendar API.
-    Prints the start and name of the next 10 events on the user's calendar.
-    """
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -36,27 +35,35 @@ def main():
             token.write(creds.to_json())
 
     try:
+        year = int(sys.argv[1])
+        month = int(sys.argv[2])
+        num_of_days = int(sys.argv[3])
+    except IndexError:
+        print(json.dumps({"error": "args wrong"}))
+        return
+    try:
         service = build('calendar', 'v3', credentials=creds)
-        start = datetime.datetime(2023, 2, 1).isoformat() + "Z"
-        end = datetime.datetime(2023, 2, 28).isoformat() + "Z"
-        print('Getting the upcoming 10 events')
+        start = datetime.datetime(year, month, 1).isoformat() + "Z"
+        end = datetime.datetime(year, month, num_of_days, 23, 59, 59).isoformat() + "Z"
         events_result = service.events().list(calendarId='h7gph7lv2pj9e164pbqg3p2qd1u3ula9@import.calendar.google.com',
                                               timeMin=start, timeMax=end,
                                               singleEvents=True,
                                               orderBy='startTime').execute()
         events = events_result.get('items', [])
+        data = [
+            {
+                "start": event['start'].get('dateTime', event['start'].get('date')),
+                "end": event["end"].get("dateTime", event["end"].get("date")),
+                "title": event["summary"],
+                "description": event["description"],
 
-        if not events:
-            print('No upcoming events found.')
-            return
-
-        for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            print(start, event["summary"])
-            print()
+            }
+            for event in events
+        ]
+        print(json.dumps(data))
 
     except HttpError as error:
-        print('An error occurred: %s' % error)
+        print(json.dumps({"error": 'An error occurred: %s' % error}))
 
 
 if __name__ == '__main__':

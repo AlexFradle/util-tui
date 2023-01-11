@@ -1,5 +1,7 @@
-use chrono::{DateTime, Datelike, Local, Month, NaiveDate, Weekday};
+use chrono::{DateTime, Datelike, FixedOffset, Local, Month, NaiveDate, Weekday};
 use num_traits::FromPrimitive;
+use std::fs::File;
+use std::{collections::HashMap, process::Command};
 use tui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
@@ -9,8 +11,20 @@ use tui::{
 
 use crate::styles::AppStyles;
 use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
+use crate::util::{centered_rect, draw_rect_borders};
+use serde::Deserialize;
+use std::io::prelude::*;
+
+#[derive(Deserialize, Debug)]
+pub struct CalendarEvent {
+    pub start: String,
+    pub end: String,
+    pub title: String,
+    pub description: String,
+}
 
 pub struct CalendarState {
+    pub data: Vec<CalendarEvent>,
     pub selected: u32,
     pub cur_day: u32,
     pub cur_month: Month,
@@ -45,8 +59,10 @@ impl CalendarState {
             .weekday()
             .number_from_monday()
             - 1;
+        let data = CalendarState::get_data(cur_year, cur_month, num_of_days);
 
         CalendarState {
+            data,
             selected: cur_day,
             cur_day,
             cur_month: Month::from_u32(cur_month).unwrap(),
@@ -54,6 +70,27 @@ impl CalendarState {
             num_of_days,
             start_day,
         }
+    }
+
+    fn get_data(year: i32, month: u32, num_of_days: i64) -> Vec<CalendarEvent> {
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(format!(
+                "python get_events.py {} {} {}",
+                year, month, num_of_days
+            ))
+            .output()
+            .expect("get_events.py error");
+        let output = &String::from_utf8_lossy(&output.stdout);
+        serde_json::from_str(output).unwrap_or(vec![])
+    }
+
+    fn set_data(&mut self) {
+        self.data = CalendarState::get_data(
+            self.cur_year,
+            self.cur_month.number_from_month(),
+            self.num_of_days,
+        );
     }
 
     fn set_num_of_days(&mut self) {
@@ -98,6 +135,7 @@ impl CalendarState {
         self.cur_month = new_month;
         self.set_start_day();
         self.set_num_of_days();
+        self.set_data();
     }
 
     pub fn increment_selected(&mut self, amount: i32) {
@@ -109,30 +147,24 @@ impl CalendarState {
     }
 }
 
-pub struct CalendarObj<'a> {
+pub struct CalendarObj {
     pub state: CalendarState,
-    pub pointless: &'a str,
 }
 
-impl<'a> CalendarObj<'a> {
-    pub fn new() -> CalendarObj<'a> {
+impl<'a> CalendarObj {
+    pub fn new() -> CalendarObj {
         CalendarObj {
             state: CalendarState::new(),
-            pointless: "dsa",
         }
     }
 
     pub fn get_calendar(&self) -> Calendar<'a> {
         Calendar::new()
     }
-
-    pub fn next_month(&mut self) {
-        self.state.increment_month(1);
-    }
 }
 
 pub struct Calendar<'a> {
-    pub data: Vec<(u8, &'a str)>,
+    pointless: &'a str,
 }
 
 impl<'a> StatefulWidget for Calendar<'a> {
@@ -175,6 +207,14 @@ impl<'a> StatefulWidget for Calendar<'a> {
             buf.set_string(rect.x, rect.y, day_name.to_string(), AppStyles::Main.get());
         }
 
+        let mut days_data: HashMap<u32, Vec<&CalendarEvent>> = HashMap::new();
+        for event in &state.data {
+            let day = DateTime::parse_from_rfc3339(&event.start).unwrap();
+            let day = day.day();
+            days_data.entry(day).or_default();
+            days_data.get_mut(&day).unwrap().push(&event);
+        }
+
         for i in 0..6 {
             for j in 0..7 {
                 let mut day: i64 = ((j + 1) + (7 * i) as i64) - state.start_day as i64;
@@ -214,7 +254,7 @@ impl<'a> StatefulWidget for Calendar<'a> {
                     }
                 }
                 if borders.intersects(Borders::TOP) {
-                    if day == state.selected as i64 {
+                    if day == state.selected as i64 || day == state.cur_day as i64 {
                         for x in rect.left()..rect.right() {
                             buf.get_mut(x, rect.top())
                                 .set_symbol(symbols.horizontal)
@@ -244,7 +284,7 @@ impl<'a> StatefulWidget for Calendar<'a> {
                 }
                 if borders.intersects(Borders::BOTTOM) {
                     let y = rect.bottom() - 1;
-                    if day == state.selected as i64 {
+                    if day == state.selected as i64 || day == state.cur_day as i64 {
                         for x in rect.left()..rect.right() {
                             buf.get_mut(x, y)
                                 .set_symbol(symbols.horizontal)
@@ -287,8 +327,8 @@ impl<'a> StatefulWidget for Calendar<'a> {
                         .set_style(border_style);
                 }
 
-                // write day number
                 if day > 0 {
+                    // write day number
                     buf.set_string(
                         rect.left() + rect.width / 2
                             - (day.to_string().len() as f32 / 2.0).ceil() as u16,
@@ -301,7 +341,6 @@ impl<'a> StatefulWidget for Calendar<'a> {
                         if day == state.cur_day as i64 {
                             AppStyles::CalendarCurDay
                                 .get()
-                                .add_modifier(Modifier::UNDERLINED)
                                 .fg(if day == state.selected as i64 {
                                     MAIN_COLOR
                                 } else {
@@ -313,15 +352,28 @@ impl<'a> StatefulWidget for Calendar<'a> {
                             AppStyles::CalendarDeselected.get()
                         },
                     );
+                    match days_data.get(&(day as u32)) {
+                        Some(v) => v.iter().enumerate().for_each(|(i, event)| {
+                            buf.set_string(
+                                rect.left() + 1 + i as u16,
+                                rect.top() + 1,
+                                "+",
+                                Style::default().fg(Color::Red),
+                            );
+                        }),
+                        None => {}
+                    }
                 }
             }
         }
+        let cr = centered_rect(50, 50, area);
+        draw_rect_borders(buf, cr, Borders::ALL, BorderType::Rounded, Style::default());
     }
 }
 
 impl<'a> Calendar<'a> {
     pub fn new() -> Calendar<'a> {
-        Calendar { data: vec![] }
+        Calendar { pointless: "a" }
     }
 }
 

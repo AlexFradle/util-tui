@@ -4,7 +4,7 @@ pub struct App<'a> {
     pub test_table: TableObj<'a>,
     pub test_list: ListObj<'a>,
     pub progress: u16,
-    pub calendar: CalendarObj<'a>,
+    pub calendar: CalendarObj,
 }
 
 impl<'a> App<'a> {

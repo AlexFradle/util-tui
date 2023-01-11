@@ -16,6 +16,7 @@ mod progress_bar;
 mod styles;
 mod table;
 mod ui;
+mod util;
 
 use crate::app::App;
 use crate::ui::ui;
