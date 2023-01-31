@@ -1,0 +1,40 @@
+TODO:
+- clock background state update
+- tmux song status
+
+Screens:
+- dashboard:
+    - time, date, short weather, volume, brightness, calendar next events, todo list snapshot
+
+- todo list
+    - add items, arrange items
+    - when completed they are moved into completed list with the time completed, they can then be deleted from here
+    - can have recurring items
+
+- usb drive helper
+    - detects when usbs are connected and allows easy mounting and unmounting
+
+- calendar
+    - screen showing month with indicators to denote events
+    - pane on the right that is a vertical timeline of the events of the selected day
+
+- money tracker
+    - enter everything that money was spent on in that day
+    - saved in database?
+
+- window layout helper
+    - detects all connected displays
+    - similar to windows
+    - can change properties of the windows when connected (resolution etc)
+
+- uni grade tracker
+    - stored in json file
+    - create module which contains a test which has weight and marks
+
+- network helper?
+- theme creator?
+- tiling window manager arranger?
+- lock screen, sleep, and shutdown buttons
+- battery manager? (conv mode)
+- audio and playback manager
+- notification / reminder system using dunst?

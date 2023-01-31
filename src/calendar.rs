@@ -1,7 +1,9 @@
-use chrono::{DateTime, Datelike, FixedOffset, Local, Month, NaiveDate, Weekday};
+use chrono::{DateTime, Datelike, FixedOffset, Local, Month, NaiveDate, Utc, Weekday};
 use num_traits::FromPrimitive;
 use std::fs::File;
 use std::{collections::HashMap, process::Command};
+use tui::layout::{Constraint, Direction, Layout};
+use tui::symbols::line;
 use tui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
@@ -9,20 +11,22 @@ use tui::{
     widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
 };
 
+use crate::json_date_format;
 use crate::styles::AppStyles;
 use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
-use crate::util::{centered_rect, draw_rect_borders};
+use crate::util::{centered_rect, draw_rect_borders, get_calendar_events};
 use serde::Deserialize;
 use std::io::prelude::*;
 
 #[derive(Deserialize, Debug)]
 pub struct CalendarEvent {
-    pub start: String,
-    pub end: String,
+    pub start: DateTime<FixedOffset>,
+    pub end: DateTime<FixedOffset>,
     pub title: String,
     pub description: String,
 }
 
+#[derive(Debug)]
 pub struct CalendarState {
     pub data: Vec<CalendarEvent>,
     pub selected: u32,
@@ -73,16 +77,8 @@ impl CalendarState {
     }
 
     fn get_data(year: i32, month: u32, num_of_days: i64) -> Vec<CalendarEvent> {
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(format!(
-                "python get_events.py {} {} {}",
-                year, month, num_of_days
-            ))
-            .output()
-            .expect("get_events.py error");
-        let output = &String::from_utf8_lossy(&output.stdout);
-        serde_json::from_str(output).unwrap_or(vec![])
+        let output = get_calendar_events(year, month, num_of_days);
+        serde_json::from_str(&output).unwrap_or(vec![])
     }
 
     fn set_data(&mut self) {
@@ -147,38 +143,38 @@ impl CalendarState {
     }
 }
 
-pub struct CalendarObj {
-    pub state: CalendarState,
-}
+pub struct Calendar;
 
-impl<'a> CalendarObj {
-    pub fn new() -> CalendarObj {
-        CalendarObj {
-            state: CalendarState::new(),
-        }
-    }
-
-    pub fn get_calendar(&self) -> Calendar<'a> {
-        Calendar::new()
+impl Calendar {
+    pub fn new() -> Calendar {
+        Calendar {}
     }
 }
 
-pub struct Calendar<'a> {
-    pointless: &'a str,
-}
-
-impl<'a> StatefulWidget for Calendar<'a> {
+impl StatefulWidget for Calendar {
     type State = CalendarState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, r_area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let l = Layout::default()
+            .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref())
+            .direction(Direction::Horizontal)
+            .split(r_area);
+        let (c_area, t_area) = (l[0], l[1]);
+        draw_rect_borders(
+            buf,
+            c_area,
+            Borders::ALL,
+            BorderType::Plain,
+            AppStyles::Main.get(),
+        );
         // + 1 to avoid border
-        let cx = area.left() + 1;
+        let cx = c_area.left() + 1;
         // + 1 to avoid border
-        let cy = area.top() + 1;
+        let cy = c_area.top() + 1;
         // - 2 for top and bottom border
-        let width = area.width - 2;
+        let width = c_area.width - 2;
         // - 2 for top and bottom border, - 1 for day line
-        let height = area.height - 2 - 1;
+        let height = c_area.height - 2 - 2;
         let cell_width = width / 7;
         let cell_height = height / 6;
 
@@ -209,8 +205,7 @@ impl<'a> StatefulWidget for Calendar<'a> {
 
         let mut days_data: HashMap<u32, Vec<&CalendarEvent>> = HashMap::new();
         for event in &state.data {
-            let day = DateTime::parse_from_rfc3339(&event.start).unwrap();
-            let day = day.day();
+            let day = event.start.day();
             days_data.entry(day).or_default();
             days_data.get_mut(&day).unwrap().push(&event);
         }
@@ -357,7 +352,7 @@ impl<'a> StatefulWidget for Calendar<'a> {
                             buf.set_string(
                                 rect.left() + 1 + i as u16,
                                 rect.top() + 1,
-                                "+",
+                                "ﱢ",
                                 Style::default().fg(Color::Red),
                             );
                         }),
@@ -366,20 +361,75 @@ impl<'a> StatefulWidget for Calendar<'a> {
                 }
             }
         }
-        let cr = centered_rect(50, 50, area);
-        draw_rect_borders(buf, cr, Borders::ALL, BorderType::Rounded, Style::default());
+
+        // draw timeline area borders
+        draw_rect_borders(
+            buf,
+            t_area,
+            Borders::ALL,
+            BorderType::Plain,
+            AppStyles::Main.get(),
+        );
+
+        // get area inset by 1 due to borders
+        let t_area = Rect {
+            x: t_area.x + 1,
+            y: t_area.y + 1,
+            width: t_area.width - 2,
+            height: t_area.height - 2,
+        };
+
+        // origin coords
+        let (ox, oy) = (t_area.x, t_area.y);
+
+        // draw timeline data
+        days_data
+            .get(&state.selected)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .enumerate()
+            .for_each(|(i, &event)| {
+                let i = i as u16;
+                let height = 3;
+                let gap = 3;
+                // draw start time
+                buf.set_string(
+                    ox,
+                    oy + (i * height) + (gap * i),
+                    format!("{}", event.start.format("%H:%M")),
+                    Style::default(),
+                );
+                // draw end time
+                buf.set_string(
+                    ox,
+                    oy + (height - 1) + (i * height) + (gap * i),
+                    format!("{}", event.end.format("%H:%M")),
+                    Style::default(),
+                );
+                // draw bars
+                for j in 0..gap {
+                    buf.set_string(
+                        ox + 5,
+                        oy + j + height + (i * height) + (gap * i),
+                        line::THICK_VERTICAL,
+                        Style::default(),
+                    );
+                }
+                // draw title
+            });
+        //         for i in 0..t_area.height {
+        //             buf.set_string(ox + 5, oy + i, line::THICK_VERTICAL, Style::default());
+        //         }
     }
 }
 
-impl<'a> Calendar<'a> {
-    pub fn new() -> Calendar<'a> {
-        Calendar { pointless: "a" }
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl<'a> Widget for Calendar<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut state = CalendarState::new();
-        StatefulWidget::render(self, area, buf, &mut state);
+    #[test]
+    fn test_calendar_state() {
+        let cs = CalendarState::new();
+        println!("{:?}", cs);
     }
 }

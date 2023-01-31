@@ -1,22 +1,34 @@
-use crate::{calendar::CalendarObj, list::ListObj, table::TableObj};
+use crate::{
+    calendar::CalendarState,
+    clock::ClockState,
+    list::ListObj,
+    screens::Screen,
+    table::TableObj,
+    util::{get_brightness, get_volume},
+};
 
 pub struct App<'a> {
     pub test_table: TableObj<'a>,
     pub test_list: ListObj<'a>,
-    pub progress: u16,
-    pub calendar: CalendarObj,
+    pub brightness: u16,
+    pub volume: u16,
+    pub calendar_state: CalendarState,
+    pub clock_state: ClockState,
+    pub cur_screen: Screen,
 }
 
 impl<'a> App<'a> {
     pub fn new() -> App<'a> {
         let t = TableObj::new(&["id", "name", "value"]);
         let l = ListObj::new();
-        let c = CalendarObj::new();
         App {
             test_table: t,
             test_list: l,
-            progress: 0,
-            calendar: c,
+            brightness: get_brightness(),
+            volume: get_volume(),
+            calendar_state: CalendarState::new(),
+            clock_state: ClockState::new(),
+            cur_screen: Screen::DashboardScreen,
         }
     }
 }

@@ -3,23 +3,26 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use screens::Screen;
 use std::{error::Error, io};
 use tui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
+use util::{set_backlight, set_volume};
 
 mod app;
 mod calendar;
+mod clock;
+mod json_date_format;
 mod list;
 mod progress_bar;
+mod screens;
 mod styles;
 mod table;
-mod ui;
 mod util;
 
 use crate::app::App;
-use crate::ui::ui;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -51,23 +54,36 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
-        terminal.draw(|f| ui(f, &mut app))?;
+        terminal.draw(|f| app.cur_screen.get_screen_func()(f, &mut app))?;
 
         if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char('q') => return Ok(()),
-                KeyCode::Down => app.test_table.next(),
-                KeyCode::Up => app.test_table.previous(),
-                KeyCode::Char('n') => app.test_list.next(),
-                KeyCode::Char('a') => match app.test_table.add_row(&["a", "b", "c"]) {
-                    Ok(_) => {}
-                    Err(e) => println!("{e}"),
-                },
-                KeyCode::Char('x') => app.progress += 1,
-                KeyCode::Char('l') => app.calendar.state.increment_month(1),
-                KeyCode::Char('p') => app.calendar.state.increment_month(-1),
-                KeyCode::Left => app.calendar.state.increment_selected(-1),
-                KeyCode::Right => app.calendar.state.increment_selected(1),
+            match (&app.cur_screen, key.code) {
+                (_, KeyCode::Char('q')) => return Ok(()),
+                (Screen::DashboardScreen, KeyCode::Left) => {
+                    app.brightness -= 1;
+                    set_backlight(app.brightness);
+                }
+                (Screen::DashboardScreen, KeyCode::Right) => {
+                    app.brightness += 1;
+                    set_backlight(app.brightness);
+                }
+                (Screen::DashboardScreen, KeyCode::Up) => {
+                    app.volume += 1;
+                    set_volume(app.volume);
+                }
+                (Screen::DashboardScreen, KeyCode::Down) => {
+                    app.volume -= 1;
+                    set_volume(app.volume);
+                }
+                (Screen::CalendarScreen, KeyCode::Down) => app.calendar_state.increment_month(-1),
+                (Screen::CalendarScreen, KeyCode::Up) => app.calendar_state.increment_month(1),
+                (Screen::CalendarScreen, KeyCode::Left) => {
+                    app.calendar_state.increment_selected(-1)
+                }
+                (Screen::CalendarScreen, KeyCode::Right) => {
+                    app.calendar_state.increment_selected(1)
+                }
+                (_, KeyCode::Char('c')) => app.cur_screen = Screen::CalendarScreen,
                 _ => {}
             }
         }

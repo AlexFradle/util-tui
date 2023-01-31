@@ -1,3 +1,6 @@
+use std::{env, fs, process::Command};
+
+use figlet_rs::FIGfont;
 use tui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
@@ -92,4 +95,93 @@ pub fn draw_rect_borders(
             .set_symbol(symbols.top_left)
             .set_style(border_style);
     }
+}
+
+pub fn draw_ascii_string(
+    buf: &mut Buffer,
+    rect: Rect,
+    string: &str,
+    style: Style,
+    center_x: bool,
+    center_y: bool,
+) -> (u16, u16) {
+    let font = FIGfont::standard().unwrap();
+    let fig = font.convert(string).unwrap();
+    let mut x = 0;
+    let mut char_positions: Vec<(u16, u16, String)> = Vec::new();
+    for f in fig.characters {
+        let (mut ox, mut oy) = (0, 0);
+        for c in f.characters.join("\n").chars() {
+            if c == '\n' {
+                oy += 1;
+                ox = 0;
+            } else {
+                ox += 1;
+                let x_pos = rect.left() + ox + x;
+                let y_pos = rect.top() + oy;
+                if x_pos <= rect.left() + rect.width && y_pos <= rect.top() + rect.height {
+                    char_positions.push((x_pos, y_pos, c.to_string()));
+                }
+            }
+        }
+        x += f.characters.iter().map(|x| x.len()).max().unwrap() as u16;
+    }
+
+    let min_x = char_positions.iter().map(|(x, _, _)| x).min().unwrap();
+    let max_x = char_positions.iter().map(|(x, _, _)| x).max().unwrap();
+    let min_y = char_positions.iter().map(|(_, y, _)| y).min().unwrap();
+    let max_y = char_positions.iter().map(|(_, y, _)| y).max().unwrap();
+
+    let mut offset_x = 0;
+    if center_x {
+        offset_x = rect.width / 2 - (max_x - min_x) / 2 - 1;
+    }
+
+    for (x, y, c) in &char_positions {
+        buf.set_string(x + offset_x, *y, c, style);
+    }
+
+    (max_x - min_x, max_y - min_y)
+}
+
+fn run_command(command: impl Into<String>) -> String {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command.into())
+        .output()
+        .expect("failed");
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+pub fn get_calendar_events(year: i32, month: u32, num_of_days: i64) -> String {
+    let cur_path = env::current_dir().unwrap();
+    run_command(format!(
+        "python {}/get_events.py {} {} {}",
+        cur_path.display(),
+        year,
+        month,
+        num_of_days
+    ))
+}
+
+pub fn set_backlight(new_val: u16) {
+    run_command(format!("light -S {}", new_val));
+}
+
+pub fn get_brightness() -> u16 {
+    run_command("light -G | tr -d '\\n'")
+        .parse::<f32>()
+        .unwrap_or(0.0)
+        .ceil() as u16
+}
+
+pub fn get_volume() -> u16 {
+    // https://unix.stackexchange.com/a/89583
+    run_command("awk -F\"[][]\" '/Left:/ { print $2 }' <(amixer sget Master) | tr -d '\\n%'")
+        .parse::<u16>()
+        .unwrap_or(0)
+}
+
+pub fn set_volume(new_val: u16) {
+    run_command(format!("amixer sset Master {}%", new_val));
 }
