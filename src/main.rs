@@ -14,8 +14,8 @@ use util::{set_backlight, set_volume};
 mod app;
 mod calendar;
 mod clock;
-mod json_date_format;
 mod list;
+mod popup;
 mod progress_bar;
 mod screens;
 mod styles;
@@ -83,6 +83,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 (Screen::CalendarScreen, KeyCode::Right) => {
                     app.calendar_state.increment_selected(1)
                 }
+                (Screen::CalendarScreen, KeyCode::Enter) => app.calendar_state.popup_toggle(),
                 (_, KeyCode::Char('c')) => app.cur_screen = Screen::CalendarScreen,
                 _ => {}
             }

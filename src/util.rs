@@ -97,6 +97,14 @@ pub fn draw_rect_borders(
     }
 }
 
+pub fn clear_area(buf: &mut Buffer, area: Rect) {
+    for x in area.left()..area.right() {
+        for y in area.top()..area.bottom() {
+            buf.get_mut(x, y).reset();
+        }
+    }
+}
+
 pub fn draw_ascii_string(
     buf: &mut Buffer,
     rect: Rect,

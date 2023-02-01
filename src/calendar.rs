@@ -11,7 +11,6 @@ use tui::{
     widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
 };
 
-use crate::json_date_format;
 use crate::styles::AppStyles;
 use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
 use crate::util::{centered_rect, draw_rect_borders, get_calendar_events};
@@ -35,6 +34,7 @@ pub struct CalendarState {
     pub cur_year: i32,
     pub num_of_days: i64,
     pub start_day: u32,
+    pub show_popup: bool,
 }
 
 impl CalendarState {
@@ -73,6 +73,7 @@ impl CalendarState {
             cur_year,
             num_of_days,
             start_day,
+            show_popup: false,
         }
     }
 
@@ -141,6 +142,10 @@ impl CalendarState {
             self.selected += amount.abs() as u32;
         }
     }
+
+    pub fn popup_toggle(&mut self) {
+        self.show_popup = !self.show_popup;
+    }
 }
 
 pub struct Calendar;
@@ -178,12 +183,13 @@ impl StatefulWidget for Calendar {
         let cell_width = width / 7;
         let cell_height = height / 6;
 
+        // draw month name and year at top
         let month_str = format!("{} {}", state.cur_month.name(), state.cur_year);
         buf.set_string(
             cx + width / 2 - (month_str.len() / 2) as u16,
             cy,
             month_str,
-            Style::default(),
+            AppStyles::Main.get().add_modifier(Modifier::BOLD),
         );
 
         let borders = Borders::ALL;
@@ -379,47 +385,66 @@ impl StatefulWidget for Calendar {
             height: t_area.height - 2,
         };
 
-        // origin coords
-        let (ox, oy) = (t_area.x, t_area.y);
+        buf.set_string(
+            // - 3 because "Events" is 6 chars long
+            t_area.x + t_area.width / 2 - 3,
+            t_area.y,
+            "Events",
+            AppStyles::Main.get().add_modifier(Modifier::BOLD),
+        );
+
+        // origin coords, y + 1 for heading
+        let (ox, oy) = (t_area.x, t_area.y + 1);
 
         // draw timeline data
-        days_data
-            .get(&state.selected)
-            .unwrap_or(&Vec::new())
-            .iter()
-            .enumerate()
-            .for_each(|(i, &event)| {
-                let i = i as u16;
-                let height = 3;
-                let gap = 3;
-                // draw start time
+        let empty_vec: Vec<&CalendarEvent> = Vec::new();
+        let event_list = days_data.get(&state.selected).unwrap_or(&empty_vec);
+        for (i, &event) in event_list.iter().enumerate() {
+            let i = i as u16;
+            let height = 5;
+            let gap = 3;
+            // draw start time
+            buf.set_string(
+                ox,
+                oy + (i * height) + (gap * i),
+                format!("{}", event.start.format("%H:%M")),
+                AppStyles::Main.get().add_modifier(Modifier::BOLD),
+            );
+            // draw end time
+            buf.set_string(
+                ox,
+                oy + (height - 1) + (i * height) + (gap * i),
+                format!("{}", event.end.format("%H:%M")),
+                AppStyles::Main.get().add_modifier(Modifier::BOLD),
+            );
+            // draw event bars
+            for j in 0..height {
                 buf.set_string(
-                    ox,
-                    oy + (i * height) + (gap * i),
-                    format!("{}", event.start.format("%H:%M")),
-                    Style::default(),
+                    ox + 5,
+                    oy + j + (i * height) + (gap * i),
+                    line::THICK_VERTICAL,
+                    AppStyles::Main.get(),
                 );
-                // draw end time
-                buf.set_string(
-                    ox,
-                    oy + (height - 1) + (i * height) + (gap * i),
-                    format!("{}", event.end.format("%H:%M")),
-                    Style::default(),
-                );
-                // draw bars
+            }
+            // draw gap bars
+            if i as usize != event_list.len() - 1 {
                 for j in 0..gap {
                     buf.set_string(
                         ox + 5,
                         oy + j + height + (i * height) + (gap * i),
-                        line::THICK_VERTICAL,
-                        Style::default(),
+                        line::VERTICAL,
+                        AppStyles::Accent.get(),
                     );
                 }
-                // draw title
-            });
-        //         for i in 0..t_area.height {
-        //             buf.set_string(ox + 5, oy + i, line::THICK_VERTICAL, Style::default());
-        //         }
+            }
+            // draw title
+            buf.set_string(
+                ox + 6,
+                oy + height / 2 + (i * height) + (gap * i),
+                &event.title,
+                AppStyles::Main.get(),
+            );
+        }
     }
 }
 

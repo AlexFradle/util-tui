@@ -5,6 +5,7 @@ pub const ACCENT_COLOR: Color = Color::Rgb(0, 95, 0);
 
 pub enum AppStyles {
     Main,
+    Accent,
     TableHeader,
     TableHighlight,
     ProgressBar,
@@ -18,6 +19,7 @@ impl AppStyles {
     pub fn get(&self) -> Style {
         match self {
             AppStyles::Main => Style::default().fg(Color::Green),
+            AppStyles::Accent => Style::default().fg(ACCENT_COLOR),
             AppStyles::TableHeader => Style::default().bg(Color::Green).fg(Color::Black),
             AppStyles::TableHighlight => Style::default().bg(ACCENT_COLOR),
             AppStyles::ProgressBar => Style::default().fg(Color::Green).bg(Color::Black),

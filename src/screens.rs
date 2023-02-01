@@ -6,7 +6,8 @@ use tui::{
 };
 
 use crate::{
-    app::App, calendar::Calendar, clock::Clock, progress_bar::ProgressBar, styles::AppStyles,
+    app::App, calendar::Calendar, clock::Clock, popup::Popup, progress_bar::ProgressBar,
+    styles::AppStyles,
 };
 
 pub enum Screen {
@@ -99,4 +100,8 @@ fn dashboard_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let cal = Calendar::new();
     f.render_stateful_widget(cal, f.size(), &mut app.calendar_state);
+    if app.calendar_state.show_popup {
+        let popup = Popup::new();
+        f.render_widget(popup, f.size());
+    }
 }
