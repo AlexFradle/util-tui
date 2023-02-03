@@ -1,4 +1,4 @@
-use std::{env, fs, process::Command};
+use std::{env, fs, path::PathBuf, process::Command};
 
 use figlet_rs::FIGfont;
 use tui::{
@@ -161,11 +161,17 @@ fn run_command(command: impl Into<String>) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
+pub fn getcwd() -> String {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .to_str()
+        .unwrap()
+        .to_owned()
+}
+
 pub fn get_calendar_events(year: i32, month: u32, num_of_days: i64) -> String {
-    let cur_path = env::current_dir().unwrap();
     run_command(format!(
-        "python {}/get_events.py {} {} {}",
-        cur_path.display(),
+        "python {}/src/get_events.py {} {} {}",
+        getcwd(),
         year,
         month,
         num_of_days

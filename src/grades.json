@@ -1,0 +1,12 @@
+[
+    {
+        "name": "COM1001 Introduction to Software Engineering",
+        "grades": [
+            {
+                "name": "Ruby programming",
+                "percentage": 93,
+                "weight": 20
+            }
+        ]
+    }
+]

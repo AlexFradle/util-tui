@@ -1,21 +1,21 @@
-use chrono::{DateTime, Datelike, FixedOffset, Local, Month, NaiveDate, Utc, Weekday};
+use chrono::{DateTime, Datelike, FixedOffset, Local, Month, NaiveDate, Timelike, Weekday};
 use num_traits::FromPrimitive;
-use std::fs::File;
-use std::{collections::HashMap, process::Command};
+use std::collections::HashMap;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::symbols::line;
+use tui::text::Span;
+use tui::widgets::{Paragraph, Wrap};
 use tui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, BorderType, Borders, StatefulWidget, Widget},
+    widgets::{BorderType, Borders, StatefulWidget, Widget},
 };
 
 use crate::styles::AppStyles;
 use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
-use crate::util::{centered_rect, draw_rect_borders, get_calendar_events};
+use crate::util::{draw_rect_borders, get_calendar_events};
 use serde::Deserialize;
-use std::io::prelude::*;
 
 #[derive(Deserialize, Debug)]
 pub struct CalendarEvent {
@@ -27,14 +27,15 @@ pub struct CalendarEvent {
 
 #[derive(Debug)]
 pub struct CalendarState {
-    pub data: Vec<CalendarEvent>,
-    pub selected: u32,
+    pub data: HashMap<u32, Vec<CalendarEvent>>,
+    pub selected_day: u32,
     pub cur_day: u32,
     pub cur_month: Month,
     pub cur_year: i32,
     pub num_of_days: i64,
     pub start_day: u32,
     pub show_popup: bool,
+    pub selected_event: u32,
 }
 
 impl CalendarState {
@@ -67,19 +68,27 @@ impl CalendarState {
 
         CalendarState {
             data,
-            selected: cur_day,
+            selected_day: cur_day,
             cur_day,
             cur_month: Month::from_u32(cur_month).unwrap(),
             cur_year,
             num_of_days,
             start_day,
             show_popup: false,
+            selected_event: 0,
         }
     }
 
-    fn get_data(year: i32, month: u32, num_of_days: i64) -> Vec<CalendarEvent> {
+    fn get_data(year: i32, month: u32, num_of_days: i64) -> HashMap<u32, Vec<CalendarEvent>> {
         let output = get_calendar_events(year, month, num_of_days);
-        serde_json::from_str(&output).unwrap_or(vec![])
+        let data: Vec<CalendarEvent> = serde_json::from_str(&output).unwrap_or(vec![]);
+        let mut days_data: HashMap<u32, Vec<CalendarEvent>> = HashMap::new();
+        for event in data {
+            let day = event.start.day();
+            days_data.entry(day).or_default();
+            days_data.get_mut(&day).unwrap().push(event);
+        }
+        return days_data;
     }
 
     fn set_data(&mut self) {
@@ -135,16 +144,31 @@ impl CalendarState {
         self.set_data();
     }
 
-    pub fn increment_selected(&mut self, amount: i32) {
-        if self.selected > 1 && amount.is_negative() {
-            self.selected -= amount.abs() as u32;
-        } else if self.selected < self.num_of_days as u32 && amount.is_positive() {
-            self.selected += amount.abs() as u32;
+    pub fn increment_selected_day(&mut self, amount: i32) {
+        if self.selected_day > 1 && amount.is_negative() {
+            self.selected_day -= amount.abs() as u32;
+        } else if self.selected_day < self.num_of_days as u32 && amount.is_positive() {
+            self.selected_day += amount.abs() as u32;
         }
     }
 
     pub fn popup_toggle(&mut self) {
         self.show_popup = !self.show_popup;
+        self.selected_event = 0;
+    }
+
+    pub fn increment_selected_event(&mut self, amount: i32) {
+        let empty_vec: Vec<CalendarEvent> = Vec::new();
+        let num_of_events = self
+            .data
+            .get(&self.selected_day)
+            .unwrap_or(&empty_vec)
+            .len();
+        if self.selected_event > 0 && amount.is_negative() {
+            self.selected_event -= amount.abs() as u32;
+        } else if self.selected_event < num_of_events as u32 - 1 && amount.is_positive() {
+            self.selected_event += amount.abs() as u32;
+        }
     }
 }
 
@@ -209,13 +233,6 @@ impl StatefulWidget for Calendar {
             buf.set_string(rect.x, rect.y, day_name.to_string(), AppStyles::Main.get());
         }
 
-        let mut days_data: HashMap<u32, Vec<&CalendarEvent>> = HashMap::new();
-        for event in &state.data {
-            let day = event.start.day();
-            days_data.entry(day).or_default();
-            days_data.get_mut(&day).unwrap().push(&event);
-        }
-
         for i in 0..6 {
             for j in 0..7 {
                 let mut day: i64 = ((j + 1) + (7 * i) as i64) - state.start_day as i64;
@@ -230,7 +247,7 @@ impl StatefulWidget for Calendar {
                 };
                 let border_style = if day == 0 {
                     Style::default().fg(Color::Black)
-                } else if day == state.selected as i64 {
+                } else if day == state.selected_day as i64 {
                     AppStyles::CalendarSelected.get()
                 } else if day == state.cur_day as i64 {
                     AppStyles::CalendarCurDay.get()
@@ -255,7 +272,7 @@ impl StatefulWidget for Calendar {
                     }
                 }
                 if borders.intersects(Borders::TOP) {
-                    if day == state.selected as i64 || day == state.cur_day as i64 {
+                    if day == state.selected_day as i64 || day == state.cur_day as i64 {
                         for x in rect.left()..rect.right() {
                             buf.get_mut(x, rect.top())
                                 .set_symbol(symbols.horizontal)
@@ -285,7 +302,7 @@ impl StatefulWidget for Calendar {
                 }
                 if borders.intersects(Borders::BOTTOM) {
                     let y = rect.bottom() - 1;
-                    if day == state.selected as i64 || day == state.cur_day as i64 {
+                    if day == state.selected_day as i64 || day == state.cur_day as i64 {
                         for x in rect.left()..rect.right() {
                             buf.get_mut(x, y)
                                 .set_symbol(symbols.horizontal)
@@ -340,26 +357,26 @@ impl StatefulWidget for Calendar {
                             day.to_string()
                         },
                         if day == state.cur_day as i64 {
-                            AppStyles::CalendarCurDay
-                                .get()
-                                .fg(if day == state.selected as i64 {
+                            AppStyles::CalendarCurDay.get().fg(
+                                if day == state.selected_day as i64 {
                                     MAIN_COLOR
                                 } else {
                                     ACCENT_COLOR
-                                })
-                        } else if day == state.selected as i64 {
+                                },
+                            )
+                        } else if day == state.selected_day as i64 {
                             AppStyles::CalendarSelected.get()
                         } else {
                             AppStyles::CalendarDeselected.get()
                         },
                     );
-                    match days_data.get(&(day as u32)) {
+                    match state.data.get(&(day as u32)) {
                         Some(v) => v.iter().enumerate().for_each(|(i, event)| {
                             buf.set_string(
                                 rect.left() + 1 + i as u16,
                                 rect.top() + 1,
                                 "ﱢ",
-                                Style::default().fg(Color::Red),
+                                AppStyles::Main.get(),
                             );
                         }),
                         None => {}
@@ -393,57 +410,87 @@ impl StatefulWidget for Calendar {
             AppStyles::Main.get().add_modifier(Modifier::BOLD),
         );
 
-        // origin coords, y + 1 for heading
-        let (ox, oy) = (t_area.x, t_area.y + 1);
+        // origin coords, y + 2 for heading and line break
+        let (ox, oy) = (t_area.x, t_area.y + 2);
 
         // draw timeline data
-        let empty_vec: Vec<&CalendarEvent> = Vec::new();
-        let event_list = days_data.get(&state.selected).unwrap_or(&empty_vec);
-        for (i, &event) in event_list.iter().enumerate() {
+        let empty_vec: Vec<CalendarEvent> = Vec::new();
+        let event_list = state.data.get(&state.selected_day).unwrap_or(&empty_vec);
+        for (i, event) in event_list.iter().enumerate() {
             let i = i as u16;
             let height = 5;
             let gap = 3;
+            let bar_x_offset = 5;
+            let y_pos = oy + (i * height) + (gap * i);
             // draw start time
             buf.set_string(
                 ox,
-                oy + (i * height) + (gap * i),
+                y_pos,
                 format!("{}", event.start.format("%H:%M")),
                 AppStyles::Main.get().add_modifier(Modifier::BOLD),
             );
             // draw end time
             buf.set_string(
                 ox,
-                oy + (height - 1) + (i * height) + (gap * i),
+                y_pos + (height - 1),
                 format!("{}", event.end.format("%H:%M")),
                 AppStyles::Main.get().add_modifier(Modifier::BOLD),
             );
             // draw event bars
             for j in 0..height {
                 buf.set_string(
-                    ox + 5,
-                    oy + j + (i * height) + (gap * i),
+                    ox + bar_x_offset,
+                    y_pos + j,
                     line::THICK_VERTICAL,
                     AppStyles::Main.get(),
                 );
             }
             // draw gap bars
             if i as usize != event_list.len() - 1 {
+                let midpoint = (gap as f32 / 2.0).ceil() as u16;
                 for j in 0..gap {
+                    // draw bar
                     buf.set_string(
-                        ox + 5,
-                        oy + j + height + (i * height) + (gap * i),
+                        ox + bar_x_offset,
+                        y_pos + j + height,
                         line::VERTICAL,
                         AppStyles::Accent.get(),
                     );
+
+                    // draw time difference text
+                    if j == midpoint - 1 {
+                        let text = format!(
+                            "{} Hour(s)",
+                            event_list[i as usize + 1].start.hour() - event.end.hour()
+                        );
+                        let line_width = t_area.width - bar_x_offset - text.len() as u16;
+                        let lines = "-".repeat(line_width as usize / 2);
+                        buf.set_string(
+                            ox + bar_x_offset,
+                            y_pos + j + height,
+                            format!("{}{}{}", lines, text, lines),
+                            AppStyles::Accent.get(),
+                        );
+                    }
                 }
             }
             // draw title
-            buf.set_string(
-                ox + 6,
-                oy + height / 2 + (i * height) + (gap * i),
-                &event.title,
-                AppStyles::Main.get(),
-            );
+            let p = Paragraph::new(Span::raw(&event.title))
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: false });
+            let event_text_area = Rect {
+                x: ox + bar_x_offset + 1,
+                y: oy + (i * height) + (gap * i),
+                width: t_area.width - bar_x_offset - 1,
+                height,
+            };
+            p.render(event_text_area, buf);
+            //             buf.set_string(
+            //                 event_text_area.x,
+            //                 event_text_area.y + event_text_area.height - 1,
+            //                 "TIME",
+            //                 Style::default(),
+            //             );
         }
     }
 }

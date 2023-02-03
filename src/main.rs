@@ -14,6 +14,7 @@ use util::{set_backlight, set_volume};
 mod app;
 mod calendar;
 mod clock;
+mod grade_tracker;
 mod list;
 mod popup;
 mod progress_bar;
@@ -78,13 +79,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 (Screen::CalendarScreen, KeyCode::Down) => app.calendar_state.increment_month(-1),
                 (Screen::CalendarScreen, KeyCode::Up) => app.calendar_state.increment_month(1),
                 (Screen::CalendarScreen, KeyCode::Left) => {
-                    app.calendar_state.increment_selected(-1)
+                    if app.calendar_state.show_popup {
+                        app.calendar_state.increment_selected_event(-1)
+                    } else {
+                        app.calendar_state.increment_selected_day(-1)
+                    }
                 }
                 (Screen::CalendarScreen, KeyCode::Right) => {
-                    app.calendar_state.increment_selected(1)
+                    if app.calendar_state.show_popup {
+                        app.calendar_state.increment_selected_event(1)
+                    } else {
+                        app.calendar_state.increment_selected_day(1)
+                    }
                 }
                 (Screen::CalendarScreen, KeyCode::Enter) => app.calendar_state.popup_toggle(),
+                (_, KeyCode::Esc) => app.cur_screen = Screen::DashboardScreen,
                 (_, KeyCode::Char('c')) => app.cur_screen = Screen::CalendarScreen,
+                (_, KeyCode::Char('g')) => app.cur_screen = Screen::GradeScreen,
                 _ => {}
             }
         }

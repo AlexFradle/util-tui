@@ -1,18 +1,25 @@
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
+    text::{Span, Spans},
     widgets::{Block, Borders},
     Frame,
 };
 
 use crate::{
-    app::App, calendar::Calendar, clock::Clock, popup::Popup, progress_bar::ProgressBar,
+    app::App,
+    calendar::{Calendar, CalendarEvent},
+    clock::Clock,
+    grade_tracker::GradeTracker,
+    popup::Popup,
+    progress_bar::ProgressBar,
     styles::AppStyles,
 };
 
 pub enum Screen {
     DashboardScreen,
     CalendarScreen,
+    GradeScreen,
 }
 
 impl Screen {
@@ -20,6 +27,7 @@ impl Screen {
         match self {
             Screen::DashboardScreen => dashboard_screen,
             Screen::CalendarScreen => calendar_screen,
+            Screen::GradeScreen => grade_screen,
         }
     }
 }
@@ -101,7 +109,50 @@ fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let cal = Calendar::new();
     f.render_stateful_widget(cal, f.size(), &mut app.calendar_state);
     if app.calendar_state.show_popup {
-        let popup = Popup::new();
-        f.render_widget(popup, f.size());
+        let empty_vec: Vec<CalendarEvent> = Vec::new();
+        let cur_data = app
+            .calendar_state
+            .data
+            .get(&app.calendar_state.selected_day)
+            .unwrap_or(&empty_vec);
+
+        let all_events_text: Vec<Vec<Spans>> = cur_data
+            .iter()
+            .enumerate()
+            .map(|(i, event)| {
+                let mut v = vec![Spans::from(Span::raw(&event.title))];
+                v.append(
+                    &mut event
+                        .description
+                        .split("\n")
+                        .map(|s| Spans::from(Span::raw(s)))
+                        .collect::<Vec<Spans>>(),
+                );
+
+                v.push(Spans::from(Span::raw(format!(
+                    " {}/{} ",
+                    i + 1,
+                    cur_data.len()
+                ))));
+                return v;
+            })
+            .collect();
+
+        if all_events_text.len() > 0 {
+            let popup = Popup::new(
+                all_events_text[app.calendar_state.selected_event as usize].clone(),
+                50,
+                50,
+                true,
+            );
+            f.render_widget(popup, f.size());
+        } else {
+            app.calendar_state.popup_toggle();
+        }
     }
+}
+
+fn grade_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+    let g = GradeTracker::new();
+    f.render_stateful_widget(g, f.size(), &mut app.grade_state);
 }
