@@ -1,18 +1,14 @@
-use std::{fs::File, io::Write};
-
-use chrono::{DateTime, Local, Timelike};
+use chrono::{DateTime, Local};
 use tui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
-    widgets::{BorderType, Borders, StatefulWidget, Widget},
+    style::Style,
+    widgets::{BorderType, Borders, StatefulWidget},
 };
-
-use figlet_rs::FIGfont;
 
 use crate::{
     styles::AppStyles,
-    util::{centered_rect, draw_ascii_string, draw_rect_borders},
+    util::{draw_ascii_string, draw_rect_borders},
 };
 
 pub struct ClockState {
@@ -52,7 +48,7 @@ impl StatefulWidget for Clock {
             width: area.width - 2,
             height: area.height - 2,
         };
-        let (text_width, text_height) =
+        let (_, text_height) =
             draw_ascii_string(buf, area, &cur_time, AppStyles::Main.get(), true, false);
         buf.set_string(1, text_height + 2, cur_date, Style::default());
     }

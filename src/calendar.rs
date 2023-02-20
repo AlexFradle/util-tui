@@ -12,9 +12,8 @@ use tui::{
     widgets::{BorderType, Borders, StatefulWidget, Widget},
 };
 
-use crate::styles::AppStyles;
-use crate::styles::{ACCENT_COLOR, MAIN_COLOR};
-use crate::util::{draw_rect_borders, get_calendar_events};
+use crate::styles::{AppStyles, COLORS};
+use crate::util::{draw_rect_borders, generic_increment, get_calendar_events};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -46,7 +45,7 @@ impl CalendarState {
         let cur_year = local_time.year();
         // Mon 01 Jan 2022
         // let date_string = format!("{}", local_time.format("%a %d %b %Y"));
-        let num_of_days = NaiveDate::from_ymd(
+        let num_of_days = NaiveDate::from_ymd_opt(
             match cur_month {
                 12 => cur_year + 1,
                 _ => cur_year,
@@ -57,10 +56,12 @@ impl CalendarState {
             },
             1,
         )
-        .signed_duration_since(NaiveDate::from_ymd(cur_year, cur_month, 1))
+        .unwrap()
+        .signed_duration_since(NaiveDate::from_ymd_opt(cur_year, cur_month, 1).unwrap())
         .num_days();
         // 0 = Monday, 6 = Sunday
-        let start_day = NaiveDate::from_ymd(cur_year, cur_month, 1)
+        let start_day = NaiveDate::from_ymd_opt(cur_year, cur_month, 1)
+            .unwrap()
             .weekday()
             .number_from_monday()
             - 1;
@@ -101,7 +102,7 @@ impl CalendarState {
 
     fn set_num_of_days(&mut self) {
         let cm = self.cur_month.number_from_month();
-        self.num_of_days = NaiveDate::from_ymd(
+        self.num_of_days = NaiveDate::from_ymd_opt(
             match cm {
                 12 => self.cur_year + 1,
                 _ => self.cur_year,
@@ -112,15 +113,18 @@ impl CalendarState {
             },
             1,
         )
-        .signed_duration_since(NaiveDate::from_ymd(self.cur_year, cm, 1))
+        .unwrap()
+        .signed_duration_since(NaiveDate::from_ymd_opt(self.cur_year, cm, 1).unwrap())
         .num_days();
     }
 
     fn set_start_day(&mut self) {
-        self.start_day = NaiveDate::from_ymd(self.cur_year, self.cur_month.number_from_month(), 1)
-            .weekday()
-            .number_from_monday()
-            - 1;
+        self.start_day =
+            NaiveDate::from_ymd_opt(self.cur_year, self.cur_month.number_from_month(), 1)
+                .unwrap()
+                .weekday()
+                .number_from_monday()
+                - 1;
     }
 
     pub fn increment_month(&mut self, amount: i32) {
@@ -145,11 +149,7 @@ impl CalendarState {
     }
 
     pub fn increment_selected_day(&mut self, amount: i32) {
-        if self.selected_day > 1 && amount.is_negative() {
-            self.selected_day -= amount.abs() as u32;
-        } else if self.selected_day < self.num_of_days as u32 && amount.is_positive() {
-            self.selected_day += amount.abs() as u32;
-        }
+        generic_increment(&mut self.selected_day, 1, self.num_of_days as u32, amount);
     }
 
     pub fn popup_toggle(&mut self) {
@@ -164,11 +164,13 @@ impl CalendarState {
             .get(&self.selected_day)
             .unwrap_or(&empty_vec)
             .len();
-        if self.selected_event > 0 && amount.is_negative() {
-            self.selected_event -= amount.abs() as u32;
-        } else if self.selected_event < num_of_events as u32 - 1 && amount.is_positive() {
-            self.selected_event += amount.abs() as u32;
-        }
+
+        generic_increment(
+            &mut self.selected_event,
+            0,
+            num_of_events as u32 - 1,
+            amount,
+        );
     }
 }
 
@@ -213,7 +215,7 @@ impl StatefulWidget for Calendar {
             cx + width / 2 - (month_str.len() / 2) as u16,
             cy,
             month_str,
-            AppStyles::Main.get().add_modifier(Modifier::BOLD),
+            AppStyles::TitleText.get(),
         );
 
         let borders = Borders::ALL;
@@ -359,9 +361,9 @@ impl StatefulWidget for Calendar {
                         if day == state.cur_day as i64 {
                             AppStyles::CalendarCurDay.get().fg(
                                 if day == state.selected_day as i64 {
-                                    MAIN_COLOR
+                                    COLORS.main
                                 } else {
-                                    ACCENT_COLOR
+                                    COLORS.accent
                                 },
                             )
                         } else if day == state.selected_day as i64 {
@@ -371,7 +373,7 @@ impl StatefulWidget for Calendar {
                         },
                     );
                     match state.data.get(&(day as u32)) {
-                        Some(v) => v.iter().enumerate().for_each(|(i, event)| {
+                        Some(v) => v.iter().enumerate().for_each(|(i, _event)| {
                             buf.set_string(
                                 rect.left() + 1 + i as u16,
                                 rect.top() + 1,
@@ -407,7 +409,7 @@ impl StatefulWidget for Calendar {
             t_area.x + t_area.width / 2 - 3,
             t_area.y,
             "Events",
-            AppStyles::Main.get().add_modifier(Modifier::BOLD),
+            AppStyles::TitleText.get(),
         );
 
         // origin coords, y + 2 for heading and line break

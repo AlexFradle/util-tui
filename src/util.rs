@@ -1,6 +1,12 @@
-use std::{env, fs, path::PathBuf, process::Command};
+use std::{
+    env,
+    ops::{AddAssign, SubAssign},
+    path::PathBuf,
+    process::Command,
+};
 
 use figlet_rs::FIGfont;
+use num_traits::{PrimInt, Signed};
 use tui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
@@ -198,4 +204,24 @@ pub fn get_volume() -> u16 {
 
 pub fn set_volume(new_val: u16) {
     run_command(format!("amixer sset Master {}%", new_val));
+}
+
+pub fn get_xresources() -> String {
+    run_command("xresources_as_json")
+}
+
+/// Increment a value by an amount between upper and lower bounds
+///
+/// upper and lower must be the same type as the value input
+pub fn generic_increment<T, U>(value: &mut T, lower: T, upper: T, amount: U)
+where
+    T: PrimInt + AddAssign<u32> + SubAssign<u32>,
+    U: PrimInt + Signed,
+{
+    // TODO: find a way to go from signed generic to unsigned generic
+    if *value > lower && amount.is_negative() {
+        *value -= amount.abs().to_u32().unwrap();
+    } else if *value < upper && amount.is_positive() {
+        *value += amount.abs().to_u32().unwrap();
+    }
 }

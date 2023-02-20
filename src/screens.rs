@@ -1,8 +1,8 @@
 use tui::{
     backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Rect},
     text::{Span, Spans},
-    widgets::{Block, Borders},
+    widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
 
@@ -139,12 +139,11 @@ fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             .collect();
 
         if all_events_text.len() > 0 {
-            let popup = Popup::new(
-                all_events_text[app.calendar_state.selected_event as usize].clone(),
-                50,
-                50,
-                true,
-            );
+            let lines = all_events_text[app.calendar_state.selected_event as usize].clone();
+            let p = Paragraph::new(lines)
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: false });
+            let popup = Popup::new(p, 50, 50);
             f.render_widget(popup, f.size());
         } else {
             app.calendar_state.popup_toggle();
@@ -155,4 +154,8 @@ fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 fn grade_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let g = GradeTracker::new();
     f.render_stateful_widget(g, f.size(), &mut app.grade_state);
+    //     if app.grade_state.show_popup {
+    //         let form = Form::new();
+    //         let p = Popup::new(form, 50, 50);
+    //     }
 }

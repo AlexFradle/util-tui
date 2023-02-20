@@ -2,15 +2,11 @@ use crate::{
     calendar::CalendarState,
     clock::ClockState,
     grade_tracker::GradeTrackerState,
-    list::ListObj,
     screens::Screen,
-    table::TableObj,
     util::{get_brightness, get_volume},
 };
 
-pub struct App<'a> {
-    pub test_table: TableObj<'a>,
-    pub test_list: ListObj<'a>,
+pub struct App {
     pub brightness: u16,
     pub volume: u16,
     pub calendar_state: CalendarState,
@@ -19,13 +15,9 @@ pub struct App<'a> {
     pub cur_screen: Screen,
 }
 
-impl<'a> App<'a> {
-    pub fn new() -> App<'a> {
-        let t = TableObj::new(&["id", "name", "value"]);
-        let l = ListObj::new();
+impl App {
+    pub fn new() -> App {
         App {
-            test_table: t,
-            test_list: l,
             brightness: get_brightness(),
             volume: get_volume(),
             calendar_state: CalendarState::new(),

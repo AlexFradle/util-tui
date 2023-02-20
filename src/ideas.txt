@@ -1,6 +1,7 @@
 TODO:
 - clock background state update
 - tmux song status
+- web assembly version
 
 Screens:
 - dashboard:

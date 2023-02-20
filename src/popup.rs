@@ -11,14 +11,13 @@ use crate::{
     util::{centered_rect, clear_area, draw_rect_borders},
 };
 
-pub struct Popup<'a> {
-    pub pages: Vec<Spans<'a>>,
+pub struct Popup<T: Widget> {
+    pub widget: T,
     pub width_percent: u16,
     pub height_percent: u16,
-    last_line_on_border: bool,
 }
 
-impl<'a> Widget for Popup<'a> {
+impl<T: Widget> Widget for Popup<T> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = centered_rect(self.width_percent, self.height_percent, area);
 
@@ -41,39 +40,33 @@ impl<'a> Widget for Popup<'a> {
             height: area.height - 2,
         };
 
-        // make paragraph
-        let t = if self.last_line_on_border && self.pages.len() > 1 {
-            let text = String::from(self.pages.last().unwrap().clone());
-            buf.set_string(
-                area.x + area.width / 2 - text.len() as u16 / 2,
-                area.y + area.height,
-                text,
-                Style::default(),
-            );
-            // get all elems except last
-            self.pages.split_last().unwrap().1.to_vec()
-        } else {
-            self.pages
-        };
-        let p = Paragraph::new(t)
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: false });
-        p.render(area, buf);
+        //         // make paragraph
+        //         let t = if self.last_line_on_border && self.pages.len() > 1 {
+        //             let text = String::from(self.pages.last().unwrap().clone());
+        //             buf.set_string(
+        //                 area.x + area.width / 2 - text.len() as u16 / 2,
+        //                 area.y + area.height,
+        //                 text,
+        //                 Style::default(),
+        //             );
+        //             // get all elems except last
+        //             self.pages.split_last().unwrap().1.to_vec()
+        //         } else {
+        //             self.pages
+        //         };
+        //         let p = Paragraph::new(t)
+        //             .alignment(Alignment::Center)
+        //             .wrap(Wrap { trim: false });
+        self.widget.render(area, buf);
     }
 }
 
-impl<'a> Popup<'a> {
-    pub fn new(
-        pages: Vec<Spans<'a>>,
-        width_percent: u16,
-        height_percent: u16,
-        last_line_on_border: bool,
-    ) -> Popup<'a> {
+impl<T: Widget> Popup<T> {
+    pub fn new(widget: T, width_percent: u16, height_percent: u16) -> Popup<T> {
         Popup {
-            pages,
+            widget,
             width_percent,
             height_percent,
-            last_line_on_border,
         }
     }
 }

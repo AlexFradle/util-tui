@@ -3,10 +3,124 @@
         "name": "COM1001 Introduction to Software Engineering",
         "grades": [
             {
+                "name": "Group Project User Stories",
+                "percentage": 83,
+                "weight": 15
+            },
+            {
+                "name": "Software Engineering Quiz",
+                "percentage": 72,
+                "weight": 15
+            },
+            {
                 "name": "Ruby programming",
                 "percentage": 93,
                 "weight": 20
             }
         ]
+    },
+    {
+        "name": "COM1002 Foundations of Computer Science",
+        "grades": [
+            {
+                "name": "Quiz 1",
+                "percentage": 73,
+                "weight": 25
+            },
+            {
+                "name": "Quiz 2",
+                "percentage": 72,
+                "weight": 25
+            }
+        ]
+    },
+    {
+        "name": "COM1003 Java Programming",
+        "grades": [
+            {
+                "name": "Quiz 1",
+                "percentage": 100,
+                "weight": 8
+            },
+            {
+                "name": "Quiz 2",
+                "percentage": 99,
+                "weight": 8
+            },
+            {
+                "name": "Quiz 3",
+                "percentage": 69,
+                "weight": 8
+            },
+            {
+                "name": "Assignment 1",
+                "percentage": 92,
+                "weight": 6
+            },
+            {
+                "name": "Assignment 2",
+                "percentage": 95,
+                "weight": 10
+            },
+            {
+                "name": "Assignment 3",
+                "percentage": 99,
+                "weight": 10
+            }
+        ]
+    },
+    {
+        "name": "COM1005 Machines and Intelligence",
+        "grades": [
+            {
+                "name": "Quiz 1",
+                "percentage": 38,
+                "weight": 30
+            },
+            {
+                "name": "Group Project",
+                "percentage": 85,
+                "weight": 20
+            }
+        ]
+    },
+    {
+        "name": "COM1006 Devices and Networks",
+        "grades": [
+            {
+                "name": "Threshold Test 1",
+                "percentage": 90,
+                "weight": 0
+            },
+            {
+                "name": "Threshold Test 2",
+                "percentage": 90,
+                "weight": 0
+            },
+            {
+                "name": "Threshold Test 3",
+                "percentage": 90,
+                "weight": 0
+            }
+        ]
+    },
+    {
+        "name": "COM1008 Web and Internet Technology",
+        "grades": [
+            {
+                "name": "Website Assignment",
+                "percentage": 85,
+                "weight": 60
+            },
+            {
+                "name": "JavaScript Assignment",
+                "percentage": 78,
+                "weight": 40
+            }
+        ]
+    },
+    {
+        "name": "COM1009 Introduction to Algorithms and Data Structures",
+        "grades": []
     }
 ]

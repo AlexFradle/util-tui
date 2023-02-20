@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -14,13 +17,12 @@ use util::{set_backlight, set_volume};
 mod app;
 mod calendar;
 mod clock;
+mod form;
 mod grade_tracker;
-mod list;
 mod popup;
 mod progress_bar;
 mod screens;
 mod styles;
-mod table;
 mod util;
 
 use crate::app::App;
@@ -59,7 +61,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 
         if let Event::Key(key) = event::read()? {
             match (&app.cur_screen, key.code) {
-                (_, KeyCode::Char('q')) => return Ok(()),
+                // Dashboard Screen
                 (Screen::DashboardScreen, KeyCode::Left) => {
                     app.brightness -= 1;
                     set_backlight(app.brightness);
@@ -76,6 +78,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     app.volume -= 1;
                     set_volume(app.volume);
                 }
+
+                // Calendar Screen
                 (Screen::CalendarScreen, KeyCode::Down) => app.calendar_state.increment_month(-1),
                 (Screen::CalendarScreen, KeyCode::Up) => app.calendar_state.increment_month(1),
                 (Screen::CalendarScreen, KeyCode::Left) => {
@@ -93,9 +97,17 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                 }
                 (Screen::CalendarScreen, KeyCode::Enter) => app.calendar_state.popup_toggle(),
+
+                // Grade Screen
+                (Screen::GradeScreen, KeyCode::Up) => app.grade_state.increment_selected(-1),
+                (Screen::GradeScreen, KeyCode::Down) => app.grade_state.increment_selected(1),
+
+                // All Scerens
                 (_, KeyCode::Esc) => app.cur_screen = Screen::DashboardScreen,
                 (_, KeyCode::Char('c')) => app.cur_screen = Screen::CalendarScreen,
                 (_, KeyCode::Char('g')) => app.cur_screen = Screen::GradeScreen,
+                (_, KeyCode::Char('q')) => return Ok(()),
+
                 _ => {}
             }
         }
