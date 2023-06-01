@@ -10,6 +10,7 @@ use crate::{
     app::App,
     calendar::{Calendar, CalendarEvent},
     clock::Clock,
+    form::Form,
     grade_tracker::GradeTracker,
     popup::Popup,
     progress_bar::ProgressBar,
@@ -154,8 +155,4 @@ fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 fn grade_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let g = GradeTracker::new();
     f.render_stateful_widget(g, f.size(), &mut app.grade_state);
-    //     if app.grade_state.show_popup {
-    //         let form = Form::new();
-    //         let p = Popup::new(form, 50, 50);
-    //     }
 }

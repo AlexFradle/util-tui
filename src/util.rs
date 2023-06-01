@@ -1,3 +1,4 @@
+use log::info;
 use std::{
     env,
     ops::{AddAssign, SubAssign},
@@ -159,11 +160,17 @@ pub fn draw_ascii_string(
 }
 
 fn run_command(command: impl Into<String>) -> String {
+    let command = command.into();
     let output = Command::new("sh")
         .arg("-c")
-        .arg(command.into())
+        .arg(&command)
         .output()
         .expect("failed");
+    info!(
+        "cmd: {} -> {}",
+        command,
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    );
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 

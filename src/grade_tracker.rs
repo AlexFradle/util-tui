@@ -4,12 +4,14 @@ use serde::Deserialize;
 use tui::{
     buffer::Buffer,
     layout::Rect,
+    style::Style,
     widgets::{BorderType, Borders, StatefulWidget},
 };
 
 use crate::{
+    form::{Form, FormField, FormFieldStyle, FormState},
     styles::AppStyles,
-    util::{draw_rect_borders, generic_increment, getcwd},
+    util::{centered_rect, clear_area, draw_rect_borders, generic_increment, getcwd},
 };
 
 #[derive(Deserialize, Debug)]
@@ -29,15 +31,34 @@ pub struct Module {
 pub struct GradeTrackerState {
     pub data: Vec<Module>,
     pub selected: u32,
-    pub show_popup: bool,
+    pub show_form: bool,
+    pub form_state: FormState,
 }
 
 impl GradeTrackerState {
     pub fn new() -> GradeTrackerState {
+        let mut form_state = FormState::new();
+        form_state.add_field(FormField::Text {
+            value: "".to_owned(),
+            style: FormFieldStyle::new("Title".to_owned()),
+        });
+        form_state.add_field(FormField::Number {
+            value: 0,
+            min: 0,
+            max: 100,
+            style: FormFieldStyle::new("Percentage".to_owned()),
+        });
+        form_state.add_field(FormField::Number {
+            value: 0,
+            min: 0,
+            max: 100,
+            style: FormFieldStyle::new("Weight".to_owned()),
+        });
         GradeTrackerState {
             data: GradeTrackerState::get_data(),
             selected: 0,
-            show_popup: false,
+            show_form: false,
+            form_state,
         }
     }
 
@@ -49,6 +70,10 @@ impl GradeTrackerState {
 
     pub fn increment_selected(&mut self, amount: i32) {
         generic_increment(&mut self.selected, 0, self.data.len() as u32 - 1, amount);
+    }
+
+    pub fn toggle_form(&mut self) {
+        self.show_form = !self.show_form;
     }
 }
 
@@ -213,6 +238,37 @@ impl StatefulWidget for GradeTracker {
                     buf.set_style(highlighted_rect, AppStyles::InvertedMain.get());
                 }
             }
+        }
+        if state.show_form {
+            let area = centered_rect(50, 50, area);
+            clear_area(buf, area);
+            let area = Rect {
+                x: area.x + 1,
+                y: area.y + 1,
+                width: area.width - 2,
+                height: area.height - 2,
+            };
+            draw_rect_borders(
+                buf,
+                area,
+                Borders::ALL,
+                BorderType::Thick,
+                AppStyles::Main.get(),
+            );
+            let title_text = " Enter New Assessment ";
+            buf.set_string(
+                area.x + ((area.width - 2) / 2) - (title_text.len() as u16 / 2),
+                area.y,
+                title_text,
+                AppStyles::Main.get(),
+            );
+            let area = Rect {
+                x: area.x + 1,
+                y: area.y + 1,
+                width: area.width - 2,
+                height: area.height - 2,
+            };
+            Form.render(area, buf, &mut state.form_state);
         }
     }
 }

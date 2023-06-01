@@ -3,3 +3,4 @@ Cargo.lock
 /src/token.json
 /src/credentials.json
 /src/debug.txt
+/log

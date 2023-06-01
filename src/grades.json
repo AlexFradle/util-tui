@@ -16,6 +16,11 @@
                 "name": "Ruby programming",
                 "percentage": 93,
                 "weight": 20
+            },
+            {
+                "name": "Iteration 1",
+                "percentage": 70,
+                "weight": 20
             }
         ]
     },
@@ -38,17 +43,17 @@
         "name": "COM1003 Java Programming",
         "grades": [
             {
-                "name": "Quiz 1",
+                "name": "Sem 1 Quiz 1",
                 "percentage": 100,
                 "weight": 8
             },
             {
-                "name": "Quiz 2",
+                "name": "Sem 1 Quiz 2",
                 "percentage": 99,
                 "weight": 8
             },
             {
-                "name": "Quiz 3",
+                "name": "Sem 1 Quiz 3",
                 "percentage": 69,
                 "weight": 8
             },
@@ -66,6 +71,21 @@
                 "name": "Assignment 3",
                 "percentage": 99,
                 "weight": 10
+            },
+            {
+                "name": "Sem 2 Quiz 1",
+                "percentage": 80,
+                "weight": 5
+            },
+            {
+                "name": "Problem Sheet",
+                "percentage": 62,
+                "weight": 10
+            },
+            {
+                "name": "Problem Sheet",
+                "percentage": 64,
+                "weight": 5
             }
         ]
     },
@@ -81,6 +101,16 @@
                 "name": "Group Project",
                 "percentage": 85,
                 "weight": 20
+            },
+            {
+                "name": "Quiz 2a",
+                "percentage": 83,
+                "weight": 25
+            },
+            {
+                "name": "Quiz 2b",
+                "percentage": 62,
+                "weight": 25
             }
         ]
     },
@@ -100,6 +130,16 @@
             {
                 "name": "Threshold Test 3",
                 "percentage": 90,
+                "weight": 0
+            },
+            {
+                "name": "Threshold Test 4",
+                "percentage": 87,
+                "weight": 0
+            },
+            {
+                "name": "Threshold Test 5",
+                "percentage": 100,
                 "weight": 0
             }
         ]
@@ -121,6 +161,32 @@
     },
     {
         "name": "COM1009 Introduction to Algorithms and Data Structures",
-        "grades": []
+        "grades": [
+            {
+                "name": "Week 3 Quiz",
+                "percentage": 80,
+                "weight": 5
+            },
+            {
+                "name": "Week 5 Quiz",
+                "percentage": 90,
+                "weight": 5
+            },
+            {
+                "name": "Week 7 Quiz",
+                "percentage": 100,
+                "weight": 5
+            },
+            {
+                "name": "Threshold Test",
+                "percentage": 90,
+                "weight": 0
+            },
+            {
+                "name": "Week 10 Quiz",
+                "percentage": 70,
+                "weight": 5
+            }
+        ]
     }
 ]

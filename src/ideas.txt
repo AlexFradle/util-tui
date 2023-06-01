@@ -39,3 +39,7 @@ Screens:
 - battery manager? (conv mode)
 - audio and playback manager
 - notification / reminder system using dunst?
+
+- markdown syntax tree creator
+- rust bevy graphics program
+- full stack, rust backend, deploy
