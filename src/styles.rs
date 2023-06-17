@@ -63,6 +63,7 @@ impl ColorData {
 pub enum AppStyles {
     Main,
     Accent,
+    AccentBg,
     InvertedMain,
     ProgressBar,
     CalendarCurDay,
@@ -77,6 +78,7 @@ impl AppStyles {
         match self {
             AppStyles::Main => Style::default().fg(COLORS.main),
             AppStyles::Accent => Style::default().fg(COLORS.accent),
+            AppStyles::AccentBg => Style::default().fg(COLORS.main).bg(COLORS.accent),
             AppStyles::InvertedMain => Style::default().fg(COLORS.background).bg(COLORS.main),
             AppStyles::ProgressBar => Style::default().fg(COLORS.main).bg(COLORS.background),
             AppStyles::CalendarCurDay => Style::default().fg(COLORS.accent),

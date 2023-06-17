@@ -1,6 +1,10 @@
-use std::fs;
+use std::{
+    fs::{self, File},
+    io::{self, BufWriter, Write},
+};
 
-use serde::Deserialize;
+use log::info;
+use serde::{Deserialize, Serialize};
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -14,14 +18,14 @@ use crate::{
     util::{centered_rect, clear_area, draw_rect_borders, generic_increment, getcwd},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Grade {
     pub name: String,
     pub percentage: f32,
     pub weight: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Module {
     pub name: String,
     pub grades: Vec<Grade>,
@@ -43,15 +47,17 @@ impl GradeTrackerState {
             style: FormFieldStyle::new("Title".to_owned()),
         });
         form_state.add_field(FormField::Number {
-            value: 0,
+            value: "".to_owned(),
             min: 0,
             max: 100,
+            is_float: false,
             style: FormFieldStyle::new("Percentage".to_owned()),
         });
         form_state.add_field(FormField::Number {
-            value: 0,
+            value: "".to_owned(),
             min: 0,
             max: 100,
+            is_float: false,
             style: FormFieldStyle::new("Weight".to_owned()),
         });
         GradeTrackerState {
@@ -62,10 +68,51 @@ impl GradeTrackerState {
         }
     }
 
+    pub fn submit_form(&mut self) -> io::Result<()> {
+        let fields = self.form_state.get_fields();
+        let vals: Vec<String> = fields.iter().map(|f| f.get_value()).collect();
+        let [title, percentage, weight] = match vals.as_slice() {
+            [t, p, w] => [t.clone(), p.clone(), w.clone()],
+            [..] => [
+                "Title".to_owned(),
+                "Percentage".to_owned(),
+                "Weight".to_owned(),
+            ],
+        };
+        let grade = Grade {
+            name: title,
+            percentage: percentage.parse::<f32>().unwrap_or(0.0),
+            weight: weight.parse::<f32>().unwrap_or(0.0),
+        };
+        self.add_grade_to_selected(grade);
+        self.write_data()?;
+        self.form_state.reset_fields();
+        Ok(())
+    }
+
     fn get_data() -> Vec<Module> {
         let str_data = fs::read_to_string(format!("{}/src/grades.json", getcwd()))
             .unwrap_or(String::from("[]"));
         serde_json::from_str(&str_data).unwrap_or(vec![])
+    }
+
+    fn add_grade_to_selected(&mut self, grade: Grade) {
+        self.data[self.selected as usize].grades.push(grade);
+    }
+
+    fn write_data(&self) -> io::Result<()> {
+        let file = match File::options()
+            .write(true)
+            .truncate(true)
+            .open(format!("{}/src/grades.json", getcwd()))
+        {
+            Ok(file) => file,
+            Err(_) => panic!("no file grades.json"),
+        };
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer_pretty(&mut writer, &self.data)?;
+        writer.flush()?;
+        Ok(())
     }
 
     pub fn increment_selected(&mut self, amount: i32) {
@@ -78,6 +125,12 @@ impl GradeTrackerState {
 }
 
 pub struct GradeTracker;
+
+impl GradeTracker {
+    pub fn new() -> GradeTracker {
+        GradeTracker {}
+    }
+}
 
 impl StatefulWidget for GradeTracker {
     type State = GradeTrackerState;
@@ -242,12 +295,6 @@ impl StatefulWidget for GradeTracker {
         if state.show_form {
             let area = centered_rect(50, 50, area);
             clear_area(buf, area);
-            let area = Rect {
-                x: area.x + 1,
-                y: area.y + 1,
-                width: area.width - 2,
-                height: area.height - 2,
-            };
             draw_rect_borders(
                 buf,
                 area,
@@ -270,21 +317,5 @@ impl StatefulWidget for GradeTracker {
             };
             Form.render(area, buf, &mut state.form_state);
         }
-    }
-}
-
-impl GradeTracker {
-    pub fn new() -> GradeTracker {
-        GradeTracker {}
-    }
-}
-
-mod tests {
-    use super::GradeTrackerState;
-
-    #[test]
-    fn test_json() {
-        let g = GradeTrackerState::new();
-        println!("{:?}", g.data);
     }
 }

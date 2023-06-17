@@ -32,6 +32,9 @@ Screens:
     - stored in json file
     - create module which contains a test which has weight and marks
 
+- film/tv view/rating tracker
+    - store rating and comments in database
+
 - network helper?
 - theme creator?
 - tiling window manager arranger?

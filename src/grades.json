@@ -4,23 +4,28 @@
         "grades": [
             {
                 "name": "Group Project User Stories",
-                "percentage": 83,
-                "weight": 15
+                "percentage": 83.0,
+                "weight": 15.0
             },
             {
                 "name": "Software Engineering Quiz",
-                "percentage": 72,
-                "weight": 15
+                "percentage": 72.0,
+                "weight": 15.0
             },
             {
                 "name": "Ruby programming",
-                "percentage": 93,
-                "weight": 20
+                "percentage": 93.0,
+                "weight": 20.0
             },
             {
                 "name": "Iteration 1",
-                "percentage": 70,
-                "weight": 20
+                "percentage": 70.0,
+                "weight": 20.0
+            },
+            {
+                "name": "Iteration 2",
+                "percentage": 83.0,
+                "weight": 30.0
             }
         ]
     },
@@ -29,13 +34,13 @@
         "grades": [
             {
                 "name": "Quiz 1",
-                "percentage": 73,
-                "weight": 25
+                "percentage": 73.0,
+                "weight": 25.0
             },
             {
                 "name": "Quiz 2",
-                "percentage": 72,
-                "weight": 25
+                "percentage": 72.0,
+                "weight": 25.0
             }
         ]
     },
@@ -44,48 +49,53 @@
         "grades": [
             {
                 "name": "Sem 1 Quiz 1",
-                "percentage": 100,
-                "weight": 8
+                "percentage": 100.0,
+                "weight": 8.0
             },
             {
                 "name": "Sem 1 Quiz 2",
-                "percentage": 99,
-                "weight": 8
+                "percentage": 99.0,
+                "weight": 8.0
             },
             {
                 "name": "Sem 1 Quiz 3",
-                "percentage": 69,
-                "weight": 8
+                "percentage": 69.0,
+                "weight": 8.0
             },
             {
                 "name": "Assignment 1",
-                "percentage": 92,
-                "weight": 6
+                "percentage": 92.0,
+                "weight": 6.0
             },
             {
                 "name": "Assignment 2",
-                "percentage": 95,
-                "weight": 10
+                "percentage": 95.0,
+                "weight": 10.0
             },
             {
                 "name": "Assignment 3",
-                "percentage": 99,
-                "weight": 10
+                "percentage": 99.0,
+                "weight": 10.0
             },
             {
                 "name": "Sem 2 Quiz 1",
-                "percentage": 80,
-                "weight": 5
+                "percentage": 80.0,
+                "weight": 5.0
             },
             {
                 "name": "Problem Sheet",
-                "percentage": 62,
-                "weight": 10
+                "percentage": 68.0,
+                "weight": 10.0
             },
             {
-                "name": "Problem Sheet",
-                "percentage": 64,
-                "weight": 5
+                "name": "Sem 2 Quiz 2",
+                "percentage": 64.0,
+                "weight": 5.0
+            },
+            {
+                "name": "Sem 2 Assignment",
+                "percentage": 88.0,
+                "weight": 30.0
             }
         ]
     },
@@ -94,23 +104,23 @@
         "grades": [
             {
                 "name": "Quiz 1",
-                "percentage": 38,
-                "weight": 30
+                "percentage": 38.0,
+                "weight": 30.0
             },
             {
                 "name": "Group Project",
-                "percentage": 85,
-                "weight": 20
+                "percentage": 85.0,
+                "weight": 20.0
             },
             {
                 "name": "Quiz 2a",
-                "percentage": 83,
-                "weight": 25
+                "percentage": 83.0,
+                "weight": 25.0
             },
             {
                 "name": "Quiz 2b",
-                "percentage": 62,
-                "weight": 25
+                "percentage": 62.0,
+                "weight": 25.0
             }
         ]
     },
@@ -119,28 +129,28 @@
         "grades": [
             {
                 "name": "Threshold Test 1",
-                "percentage": 90,
-                "weight": 0
+                "percentage": 90.0,
+                "weight": 0.0
             },
             {
                 "name": "Threshold Test 2",
-                "percentage": 90,
-                "weight": 0
+                "percentage": 90.0,
+                "weight": 0.0
             },
             {
                 "name": "Threshold Test 3",
-                "percentage": 90,
-                "weight": 0
+                "percentage": 90.0,
+                "weight": 0.0
             },
             {
                 "name": "Threshold Test 4",
-                "percentage": 87,
-                "weight": 0
+                "percentage": 87.0,
+                "weight": 0.0
             },
             {
                 "name": "Threshold Test 5",
-                "percentage": 100,
-                "weight": 0
+                "percentage": 100.0,
+                "weight": 0.0
             }
         ]
     },
@@ -149,13 +159,13 @@
         "grades": [
             {
                 "name": "Website Assignment",
-                "percentage": 85,
-                "weight": 60
+                "percentage": 85.0,
+                "weight": 60.0
             },
             {
                 "name": "JavaScript Assignment",
-                "percentage": 78,
-                "weight": 40
+                "percentage": 78.0,
+                "weight": 40.0
             }
         ]
     },
@@ -164,28 +174,28 @@
         "grades": [
             {
                 "name": "Week 3 Quiz",
-                "percentage": 80,
-                "weight": 5
+                "percentage": 80.0,
+                "weight": 5.0
             },
             {
                 "name": "Week 5 Quiz",
-                "percentage": 90,
-                "weight": 5
+                "percentage": 90.0,
+                "weight": 5.0
             },
             {
                 "name": "Week 7 Quiz",
-                "percentage": 100,
-                "weight": 5
+                "percentage": 100.0,
+                "weight": 5.0
             },
             {
                 "name": "Threshold Test",
-                "percentage": 90,
-                "weight": 0
+                "percentage": 90.0,
+                "weight": 0.0
             },
             {
                 "name": "Week 10 Quiz",
-                "percentage": 70,
-                "weight": 5
+                "percentage": 70.0,
+                "weight": 5.0
             }
         ]
     }

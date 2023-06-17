@@ -10,8 +10,8 @@ use crate::{
     app::App,
     calendar::{Calendar, CalendarEvent},
     clock::Clock,
-    form::Form,
     grade_tracker::GradeTracker,
+    money_tracker::MoneyTracker,
     popup::Popup,
     progress_bar::ProgressBar,
     styles::AppStyles,
@@ -21,6 +21,7 @@ pub enum Screen {
     DashboardScreen,
     CalendarScreen,
     GradeScreen,
+    MoneyScreen,
 }
 
 impl Screen {
@@ -29,6 +30,7 @@ impl Screen {
             Screen::DashboardScreen => dashboard_screen,
             Screen::CalendarScreen => calendar_screen,
             Screen::GradeScreen => grade_screen,
+            Screen::MoneyScreen => money_screen,
         }
     }
 }
@@ -155,4 +157,9 @@ fn calendar_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 fn grade_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let g = GradeTracker::new();
     f.render_stateful_widget(g, f.size(), &mut app.grade_state);
+}
+
+fn money_screen<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+    let m = MoneyTracker::new();
+    f.render_stateful_widget(m, f.size(), &mut app.money_state);
 }

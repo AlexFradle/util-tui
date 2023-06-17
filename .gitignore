@@ -4,3 +4,6 @@ Cargo.lock
 /src/credentials.json
 /src/debug.txt
 /log
+/src/db.sqlite3
+/src/db.sqlite3-shm
+/src/db.sqlite3-wal

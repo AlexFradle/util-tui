@@ -6,8 +6,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use db::DB;
 use log::info;
 use screens::Screen;
+use sqlx::Connection;
 use std::{error::Error, io};
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -18,8 +20,10 @@ use util::{set_backlight, set_volume};
 mod app;
 mod calendar;
 mod clock;
+mod db;
 mod form;
 mod grade_tracker;
+mod money_tracker;
 mod popup;
 mod progress_bar;
 mod screens;
@@ -28,10 +32,13 @@ mod util;
 
 use crate::app::App;
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     // setup logging
     // https://tms-dev-blog.com/log-to-a-file-in-rust-with-log4rs/
     log4rs::init_file("logging_config.yaml", Default::default()).unwrap();
+
+    DB::create_tables().await;
 
     // setup terminal
     enable_raw_mode()?;
@@ -41,8 +48,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new();
-    let res = run_app(&mut terminal, app);
+    let app = App::new().await;
+    let res = run_app(&mut terminal, app).await;
 
     // restore terminal
     disable_raw_mode()?;
@@ -60,88 +67,147 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
         terminal.draw(|f| app.cur_screen.get_screen_func()(f, &mut app))?;
 
         if let Event::Key(key) = event::read()? {
-            if read_input(&mut app, &key) {
+            // quit if read_input returns true
+            if read_input(&mut app, &key).await {
+                app.db.conn.close();
                 return Ok(());
             }
         }
     }
 }
 
-fn read_input(app: &mut App, key: &KeyEvent) -> bool {
-    match (&app.cur_screen, key.code) {
-        // Dashboard Screen
-        (Screen::DashboardScreen, KeyCode::Left) => {
+async fn read_input(app: &mut App, key: &KeyEvent) -> bool {
+    let capture_input = app.grade_state.show_form
+        || app.money_state.add_form_selected
+        || app.money_state.search_form_selected;
+
+    match (&app.cur_screen, key.code, capture_input) {
+        // Dashboard Screen ---------------------------------------------------
+        (Screen::DashboardScreen, KeyCode::Left, _) => {
             app.brightness -= 1;
             set_backlight(app.brightness);
         }
-        (Screen::DashboardScreen, KeyCode::Right) => {
+        (Screen::DashboardScreen, KeyCode::Right, _) => {
             app.brightness += 1;
             set_backlight(app.brightness);
         }
-        (Screen::DashboardScreen, KeyCode::Up) => {
+        (Screen::DashboardScreen, KeyCode::Up, _) => {
             app.volume += 1;
             set_volume(app.volume);
         }
-        (Screen::DashboardScreen, KeyCode::Down) => {
+        (Screen::DashboardScreen, KeyCode::Down, _) => {
             app.volume -= 1;
             set_volume(app.volume);
         }
 
-        // Calendar Screen
-        (Screen::CalendarScreen, KeyCode::Down) => app.calendar_state.increment_month(-1),
-        (Screen::CalendarScreen, KeyCode::Up) => app.calendar_state.increment_month(1),
-        (Screen::CalendarScreen, KeyCode::Left) => {
+        // Calendar Screen ----------------------------------------------------
+        (Screen::CalendarScreen, KeyCode::Down, _) => app.calendar_state.increment_month(-1),
+        (Screen::CalendarScreen, KeyCode::Up, _) => app.calendar_state.increment_month(1),
+        (Screen::CalendarScreen, KeyCode::Left, _) => {
             if app.calendar_state.show_popup {
                 app.calendar_state.increment_selected_event(-1)
             } else {
                 app.calendar_state.increment_selected_day(-1)
             }
         }
-        (Screen::CalendarScreen, KeyCode::Right) => {
+        (Screen::CalendarScreen, KeyCode::Right, _) => {
             if app.calendar_state.show_popup {
                 app.calendar_state.increment_selected_event(1)
             } else {
                 app.calendar_state.increment_selected_day(1)
             }
         }
-        (Screen::CalendarScreen, KeyCode::Enter) => app.calendar_state.popup_toggle(),
+        (Screen::CalendarScreen, KeyCode::Enter, _) => app.calendar_state.popup_toggle(),
 
-        // Grade Screen
-        (Screen::GradeScreen, KeyCode::Up) => {
-            if !app.grade_state.show_form {
-                app.grade_state.increment_selected(-1)
-            } else {
-                app.grade_state.form_state.increment_selected(-1)
-            }
+        // Grade Screen -------------------------------------------------------
+        (Screen::GradeScreen, KeyCode::Up, false) => app.grade_state.increment_selected(-1),
+        (Screen::GradeScreen, KeyCode::Up, true) => {
+            app.grade_state.form_state.increment_selected(-1);
         }
-        (Screen::GradeScreen, KeyCode::Down) => {
-            if !app.grade_state.show_form {
-                app.grade_state.increment_selected(1)
-            } else {
-                app.grade_state.form_state.increment_selected(1)
-            }
+        (Screen::GradeScreen, KeyCode::Down, false) => app.grade_state.increment_selected(1),
+        (Screen::GradeScreen, KeyCode::Down, true) => {
+            app.grade_state.form_state.increment_selected(1);
         }
-        (Screen::GradeScreen, KeyCode::Char('i')) => {
-            if !app.grade_state.show_form {
-                app.grade_state.toggle_form();
-            }
+        (Screen::GradeScreen, KeyCode::Tab, true) => {
+            app.grade_state.form_state.increment_selected(1);
         }
-        (Screen::GradeScreen, KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Enter) => {
-            if app.grade_state.show_form {
-                app.grade_state.form_state.send_input(&key.code);
-            }
+        (Screen::GradeScreen, KeyCode::Esc, true) => {
+            app.grade_state.toggle_form();
+        }
+        (Screen::GradeScreen, KeyCode::Char('i'), false) => {
+            app.grade_state.toggle_form();
+        }
+        (Screen::GradeScreen, KeyCode::Char(_) | KeyCode::Backspace, true) => {
+            app.grade_state.form_state.send_input(&key.code);
+        }
+        (Screen::GradeScreen, KeyCode::Enter, true) => {
+            match app.grade_state.submit_form() {
+                Err(_) => panic!("grade json write fail"),
+                _ => {}
+            };
+            app.grade_state.toggle_form();
         }
 
-        // All Scerens
-        (_, KeyCode::Esc) => app.cur_screen = Screen::DashboardScreen,
-        (_, KeyCode::Char('c')) => app.cur_screen = Screen::CalendarScreen,
-        (_, KeyCode::Char('g')) => app.cur_screen = Screen::GradeScreen,
-        (_, KeyCode::Char('q')) => return true,
+        // Money Screen -------------------------------------------------------
+        (Screen::MoneyScreen, KeyCode::Char('i'), false) => {
+            app.money_state.select_add_form();
+        }
+        (Screen::MoneyScreen, KeyCode::Char('s'), false) => {
+            app.money_state.select_search_form();
+        }
+        (Screen::MoneyScreen, KeyCode::Esc, true) => {
+            app.money_state.select_transaction_list();
+        }
+        (Screen::MoneyScreen, KeyCode::Char(_) | KeyCode::Backspace, true) => {
+            if app.money_state.search_form_selected {
+                app.money_state.search_form.send_input(&key.code);
+            } else {
+                app.money_state.add_form.send_input(&key.code);
+            }
+        }
+        (Screen::MoneyScreen, KeyCode::Up, false) => app.money_state.increment_selected(-1),
+        (Screen::MoneyScreen, KeyCode::Up, true) => {
+            if app.money_state.search_form_selected {
+                app.money_state.search_form.increment_selected(-1);
+            } else {
+                app.money_state.add_form.increment_selected(-1);
+            }
+        }
+        (Screen::MoneyScreen, KeyCode::Down, false) => app.money_state.increment_selected(1),
+        (Screen::MoneyScreen, KeyCode::Down, true) => {
+            if app.money_state.search_form_selected {
+                app.money_state.search_form.increment_selected(1);
+            } else {
+                app.money_state.add_form.increment_selected(1);
+            }
+        }
+        (Screen::MoneyScreen, KeyCode::Tab, true) => {
+            if app.money_state.search_form_selected {
+                app.money_state.search_form.increment_selected(1);
+            } else {
+                app.money_state.add_form.increment_selected(1);
+            }
+        }
+        (Screen::MoneyScreen, KeyCode::Enter, true) => {
+            if app.money_state.search_form_selected {
+                app.money_state.submit_search_form(&mut app.db).await;
+            } else {
+                app.money_state.submit_add_form(&mut app.db).await;
+            }
+            app.money_state.select_transaction_list();
+        }
+
+        // All Scerens --------------------------------------------------------
+        (_, KeyCode::Char('d'), false) => app.cur_screen = Screen::DashboardScreen,
+        (_, KeyCode::Char('c'), false) => app.cur_screen = Screen::CalendarScreen,
+        (_, KeyCode::Char('g'), false) => app.cur_screen = Screen::GradeScreen,
+        (_, KeyCode::Char('m'), false) => app.cur_screen = Screen::MoneyScreen,
+        (_, KeyCode::Char('q'), false) => return true,
 
         _ => {}
     };

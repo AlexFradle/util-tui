@@ -20,7 +20,8 @@ pub struct FormFieldStyle {
     pub title: String,
     pub borders: Borders,
     pub border_type: BorderType,
-    pub style: Style,
+    pub selected_style: Style,
+    pub unselected_style: Style,
 }
 
 impl FormFieldStyle {
@@ -29,7 +30,8 @@ impl FormFieldStyle {
             title,
             borders: Borders::ALL,
             border_type: BorderType::Plain,
-            style: AppStyles::Main.get(),
+            selected_style: AppStyles::Main.get(),
+            unselected_style: AppStyles::Accent.get(),
         }
     }
 }
@@ -41,9 +43,10 @@ pub enum FormField {
         style: FormFieldStyle,
     },
     Number {
-        value: i64,
-        min: i64,
-        max: i64,
+        value: String,
+        min: u32,
+        max: u32,
+        is_float: bool,
         style: FormFieldStyle,
     },
     Select {
@@ -58,6 +61,13 @@ pub enum FormField {
         value: bool,
         style: FormFieldStyle,
     },
+    Date {
+        value: String,
+        year: String,
+        month: String,
+        day: String,
+        style: FormFieldStyle,
+    },
 }
 
 impl FormField {
@@ -68,6 +78,7 @@ impl FormField {
             FormField::Select { style, .. } => style,
             FormField::Radio { style, .. } => style,
             FormField::Checkbox { style, .. } => style,
+            FormField::Date { style, .. } => style,
         }
     }
 
@@ -78,7 +89,20 @@ impl FormField {
             FormField::Select { value, .. } => value.to_string(),
             FormField::Radio { value, .. } => value.to_string(),
             FormField::Checkbox { value, .. } => value.to_string(),
+            FormField::Date { value, .. } => value.clone(),
         }
+    }
+
+    pub fn change_style_selected(&mut self, new_style: Style) {
+        let mut style = match self {
+            FormField::Text { style, .. } => style,
+            FormField::Number { style, .. } => style,
+            FormField::Select { style, .. } => style,
+            FormField::Radio { style, .. } => style,
+            FormField::Checkbox { style, .. } => style,
+            FormField::Date { style, .. } => style,
+        };
+        (*style).selected_style = new_style;
     }
 }
 
@@ -89,6 +113,7 @@ pub struct Form;
 #[derive(Debug)]
 pub struct FormState {
     fields: Vec<FormField>,
+    initial_values: Vec<String>,
     pub selected_field: u32,
 }
 
@@ -102,16 +127,53 @@ impl FormState {
     pub fn new() -> FormState {
         FormState {
             fields: vec![],
+            initial_values: vec![],
             selected_field: 0,
         }
     }
 
     pub fn add_field(&mut self, new_field: FormField) {
+        self.initial_values.push(new_field.get_value());
         self.fields.push(new_field);
+    }
+
+    pub fn get_fields(&self) -> &Vec<FormField> {
+        &self.fields
+    }
+
+    pub fn get_fields_mut(&mut self) -> &mut Vec<FormField> {
+        &mut self.fields
     }
 
     pub fn get_selected_field(&self) -> &FormField {
         &self.fields[self.selected_field as usize]
+    }
+
+    pub fn reset_fields(&mut self) {
+        self.selected_field = 0;
+        for (i, field) in &mut self.fields.iter_mut().enumerate() {
+            let v = self.initial_values.get(i).unwrap();
+            match field {
+                FormField::Text { value, .. } => {
+                    *value = v.clone();
+                }
+                FormField::Number { value, .. } => {
+                    *value = v.clone();
+                }
+                FormField::Select { value, .. } => {
+                    *value = v.parse::<usize>().unwrap();
+                }
+                FormField::Radio { value, .. } => {
+                    *value = v.parse::<usize>().unwrap();
+                }
+                FormField::Checkbox { value, .. } => {
+                    *value = v.parse::<bool>().unwrap();
+                }
+                FormField::Date { value, .. } => {
+                    *value = v.clone();
+                }
+            };
+        }
     }
 
     pub fn increment_selected(&mut self, amount: i32) {
@@ -131,16 +193,61 @@ impl FormState {
                         value.truncate(value.len() - 1);
                     }
                 }
-                KeyCode::Enter => {}
                 KeyCode::Char(char) => {
                     value.push_str(&char.to_string());
                 }
                 _ => {}
             },
-            FormField::Number { value, .. } => {}
+            FormField::Number {
+                value,
+                min,
+                max,
+                is_float,
+                ..
+            } => match key {
+                KeyCode::Char(num @ ('0'..='9' | '.')) => {
+                    let new_value = format!("{}{}", value, num);
+                    // dont allow decimal point in non float
+                    if !*is_float && *num == '.' {
+                        return;
+                    }
+                    if let Ok(n) = new_value.parse::<f32>() {
+                        if n <= *max as f32 {
+                            *value = new_value;
+                        }
+                    }
+                }
+                KeyCode::Backspace => {
+                    if value.len() > 0 {
+                        value.truncate(value.len() - 1);
+                    }
+                }
+                _ => {}
+            },
             FormField::Select { value, .. } => {}
             FormField::Radio { value, .. } => {}
             FormField::Checkbox { value, .. } => {}
+            FormField::Date {
+                value,
+                year,
+                month,
+                day,
+                ..
+            } => {
+                match key {
+                    KeyCode::Char(num @ '0'..='9') => {
+                        if day.len() < 2 {
+                            day.push_str(&num.to_string());
+                        } else if month.len() < 2 {
+                            month.push_str(&num.to_string());
+                        } else if year.len() < 2 {
+                            year.push_str(&num.to_string());
+                        }
+                    }
+                    _ => {}
+                };
+                *value = format!("{:_<2} / {:_<2} / {:_<2}", day, month, year);
+            }
         };
     }
 }
@@ -153,10 +260,10 @@ impl StatefulWidget for Form {
             return;
         }
 
-        let total_height = state.fields.len() * 3 + (state.fields.len() - 1) + 3;
-        if total_height as u16 > area.height {
-            return;
-        }
+        //         let total_height = state.fields.len() * 3 + (state.fields.len() - 1) + 3;
+        //         if total_height as u16 > area.height {
+        //             return;
+        //         }
 
         for (i, field) in state.fields.iter().enumerate() {
             let i = i as u16;
@@ -169,11 +276,10 @@ impl StatefulWidget for Form {
             };
 
             let is_selected = i == state.selected_field as u16;
-
-            let text_style = if is_selected {
-                AppStyles::Main.get()
+            let field_style = if is_selected {
+                style.selected_style
             } else {
-                AppStyles::Accent.get()
+                style.unselected_style
             };
 
             draw_rect_borders(
@@ -181,48 +287,43 @@ impl StatefulWidget for Form {
                 field_area,
                 style.borders,
                 style.border_type,
-                text_style,
+                field_style,
             );
 
             let value = field.get_value();
 
-            buf.set_string(field_area.x + 1, field_area.y, &style.title, text_style);
-            buf.set_string(field_area.x + 1, field_area.y + 1, &value, text_style);
+            buf.set_string(field_area.x + 1, field_area.y, &style.title, field_style);
+            buf.set_string(field_area.x + 1, field_area.y + 1, &value, field_style);
 
             if is_selected {
                 buf.set_string(
                     field_area.x + 1 + value.len() as u16,
                     field_area.y + 1,
                     symbols::block::FULL,
-                    style.style,
+                    style.selected_style,
                 );
             }
         }
-        let button_rect = Rect {
-            x: area.x + (area.width - 2) / 4,
-            y: area.y + area.height - 3,
-            width: (area.width - 2) / 2,
-            height: 3,
-        };
-        draw_rect_borders(
-            buf,
-            button_rect,
-            Borders::ALL,
-            BorderType::Plain,
-            AppStyles::Main.get(),
-        );
-        buf.set_string(
-            button_rect.x + (button_rect.width - 2) / 2 - 1,
-            button_rect.y + 1,
-            "Submit",
-            AppStyles::Main.get(),
-        );
+        //         let button_rect = Rect {
+        //             x: area.x + (area.width - 2) / 4,
+        //             y: area.y + area.height - 3,
+        //             width: (area.width - 2) / 2,
+        //             height: 3,
+        //         };
+        //         draw_rect_borders(
+        //             buf,
+        //             button_rect,
+        //             Borders::ALL,
+        //             BorderType::Plain,
+        //             AppStyles::Main.get(),
+        //         );
+        //         buf.set_string(
+        //             button_rect.x + (button_rect.width - 2) / 2 - 1,
+        //             button_rect.y + 1,
+        //             "Submit",
+        //             AppStyles::Main.get(),
+        //         );
     }
 }
 
 // ----------------------------------------------------------------------------
-
-#[test]
-fn test_form() {
-    println!("test");
-}
