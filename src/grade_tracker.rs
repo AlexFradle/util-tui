@@ -8,12 +8,13 @@ use serde::{Deserialize, Serialize};
 use tui::{
     buffer::Buffer,
     layout::Rect,
-    style::Style,
     widgets::{BorderType, Borders, StatefulWidget},
 };
 
 use crate::{
-    form::{Form, FormField, FormFieldStyle, FormState},
+    form::{
+        FloatField, Form, FormField, FormFieldStyle, FormState, FormValue, IntegerField, TextField,
+    },
     styles::AppStyles,
     util::{centered_rect, clear_area, draw_rect_borders, generic_increment, getcwd},
 };
@@ -42,24 +43,25 @@ pub struct GradeTrackerState {
 impl GradeTrackerState {
     pub fn new() -> GradeTrackerState {
         let mut form_state = FormState::new();
-        form_state.add_field(FormField::Text {
-            value: "".to_owned(),
-            style: FormFieldStyle::new("Title".to_owned()),
-        });
-        form_state.add_field(FormField::Number {
-            value: "".to_owned(),
-            min: 0,
-            max: 100,
-            is_float: false,
-            style: FormFieldStyle::new("Percentage".to_owned()),
-        });
-        form_state.add_field(FormField::Number {
-            value: "".to_owned(),
-            min: 0,
-            max: 100,
-            is_float: false,
-            style: FormFieldStyle::new("Weight".to_owned()),
-        });
+        form_state.add_field(Box::new(TextField::new(
+            "".to_owned(),
+            true,
+            FormFieldStyle::new("Title".to_owned()),
+        )));
+        form_state.add_field(Box::new(FloatField::new(
+            0.,
+            0.,
+            100.,
+            true,
+            FormFieldStyle::new("Percentage".to_owned()),
+        )));
+        form_state.add_field(Box::new(FloatField::new(
+            0.,
+            0.,
+            100.,
+            true,
+            FormFieldStyle::new("Weight".to_owned()),
+        )));
         GradeTrackerState {
             data: GradeTrackerState::get_data(),
             selected: 0,
@@ -68,26 +70,23 @@ impl GradeTrackerState {
         }
     }
 
-    pub fn submit_form(&mut self) -> io::Result<()> {
+    pub fn submit_form(&mut self) {
         let fields = self.form_state.get_fields();
-        let vals: Vec<String> = fields.iter().map(|f| f.get_value()).collect();
-        let [title, percentage, weight] = match vals.as_slice() {
-            [t, p, w] => [t.clone(), p.clone(), w.clone()],
-            [..] => [
-                "Title".to_owned(),
-                "Percentage".to_owned(),
-                "Weight".to_owned(),
-            ],
-        };
-        let grade = Grade {
-            name: title,
-            percentage: percentage.parse::<f32>().unwrap_or(0.0),
-            weight: weight.parse::<f32>().unwrap_or(0.0),
-        };
-        self.add_grade_to_selected(grade);
-        self.write_data()?;
-        self.form_state.reset_fields();
-        Ok(())
+        let vals: Vec<&FormValue> = fields.iter().map(|f| f.get_internal_value()).collect();
+        match vals.as_slice() {
+            [title, percentage, weight] => {
+                let grade = Grade {
+                    name: title.try_get_text_value().unwrap().clone(),
+                    percentage: *percentage.try_get_float_value().unwrap(),
+                    weight: *weight.try_get_float_value().unwrap(),
+                };
+                if self.write_data().is_ok() {
+                    self.add_grade_to_selected(grade);
+                    self.form_state.reset_fields();
+                }
+            }
+            [..] => {}
+        }
     }
 
     fn get_data() -> Vec<Module> {

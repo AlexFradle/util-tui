@@ -3,7 +3,7 @@ use log::info;
 use crate::{
     calendar::CalendarState,
     clock::ClockState,
-    db::{Todo, DB},
+    db::DB,
     grade_tracker::GradeTrackerState,
     money_tracker::MoneyTrackerState,
     screens::Screen,

@@ -146,10 +146,7 @@ async fn read_input(app: &mut App, key: &KeyEvent) -> bool {
             app.grade_state.form_state.send_input(&key.code);
         }
         (Screen::GradeScreen, KeyCode::Enter, true) => {
-            match app.grade_state.submit_form() {
-                Err(_) => panic!("grade json write fail"),
-                _ => {}
-            };
+            app.grade_state.submit_form();
             app.grade_state.toggle_form();
         }
 

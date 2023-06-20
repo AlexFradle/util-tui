@@ -9,7 +9,10 @@ use tui::{
 
 use crate::{
     db::{MoneyTransaction, DB},
-    form::{Form, FormField, FormFieldStyle, FormState},
+    form::{
+        DateField, FloatField, Form, FormField, FormFieldStyle, FormState, FormValue, IntegerField,
+        TextField,
+    },
     styles::AppStyles,
     util::{draw_rect_borders, generic_increment},
 };
@@ -35,48 +38,49 @@ impl MoneyTracker {
 impl MoneyTrackerState {
     pub fn new() -> MoneyTrackerState {
         let mut search_form = FormState::new();
-        search_form.add_field(FormField::Text {
-            value: "".to_owned(),
-            style: FormFieldStyle::new("Keyword".to_owned()),
-        });
-        search_form.add_field(FormField::Number {
-            value: "".to_owned(),
-            min: 0,
-            max: 100000,
-            is_float: true,
-            style: FormFieldStyle::new("Min".to_owned()),
-        });
-        search_form.add_field(FormField::Number {
-            value: "".to_owned(),
-            min: 0,
-            max: 100000,
-            is_float: true,
-            style: FormFieldStyle::new("Max".to_owned()),
-        });
+        search_form.add_field(Box::new(TextField::new(
+            "".to_owned(),
+            false,
+            FormFieldStyle::new("Keyword".to_owned()),
+        )));
+        search_form.add_field(Box::new(FloatField::new(
+            0.,
+            0.,
+            100000.,
+            false,
+            FormFieldStyle::new("Min".to_owned()),
+        )));
+        search_form.add_field(Box::new(FloatField::new(
+            100000.,
+            0.,
+            100000.,
+            false,
+            FormFieldStyle::new("Max".to_owned()),
+        )));
 
         let mut add_form = FormState::new();
-        add_form.add_field(FormField::Text {
-            value: "".to_owned(),
-            style: FormFieldStyle::new("Title".to_owned()),
-        });
-        add_form.add_field(FormField::Number {
-            value: "".to_owned(),
-            min: 0,
-            max: 100000,
-            is_float: true,
-            style: FormFieldStyle::new("Amount".to_owned()),
-        });
-        add_form.add_field(FormField::Text {
-            value: "".to_owned(),
-            style: FormFieldStyle::new("Details".to_owned()),
-        });
-        add_form.add_field(FormField::Date {
-            value: "__ / __ / __".to_owned(),
-            year: "".to_owned(),
-            month: "".to_owned(),
-            day: "".to_owned(),
-            style: FormFieldStyle::new("Date".to_owned()),
-        });
+        add_form.add_field(Box::new(TextField::new(
+            "".to_owned(),
+            true,
+            FormFieldStyle::new("Title".to_owned()),
+        )));
+        add_form.add_field(Box::new(IntegerField::new(
+            0,
+            0,
+            100000,
+            true,
+            FormFieldStyle::new("Amount".to_owned()),
+        )));
+        add_form.add_field(Box::new(TextField::new(
+            "".to_owned(),
+            false,
+            FormFieldStyle::new("Details".to_owned()),
+        )));
+        add_form.add_field(Box::new(DateField::new(
+            Utc::now(),
+            false,
+            FormFieldStyle::new("Date".to_owned()),
+        )));
         MoneyTrackerState {
             search_form,
             add_form,
@@ -98,15 +102,15 @@ impl MoneyTrackerState {
 
     pub async fn submit_search_form(&mut self, db: &mut DB) {
         let fields = self.search_form.get_fields();
-        let vals: Vec<String> = fields.iter().map(|f| f.get_value()).collect();
+        let vals: Vec<&FormValue> = fields.iter().map(|f| f.get_internal_value()).collect();
         match vals.as_slice() {
             [k, min, max] => {
                 self.transactions.clear();
                 self.transactions = db
                     .query_transactions(
-                        k,
-                        min.parse::<u32>().unwrap_or(0),
-                        max.parse::<u32>().unwrap_or(u32::MAX),
+                        k.try_get_text_value().unwrap(),
+                        *min.try_get_float_value().unwrap() as u32,
+                        *max.try_get_float_value().unwrap() as u32,
                     )
                     .await;
                 self.search_form.reset_fields();
@@ -118,11 +122,14 @@ impl MoneyTrackerState {
 
     pub async fn submit_add_form(&mut self, db: &mut DB) {
         let fields = self.add_form.get_fields();
-        let vals: Vec<String> = fields.iter().map(|f| f.get_value()).collect();
+        let vals: Vec<&FormValue> = fields.iter().map(|f| f.get_internal_value()).collect();
         match vals.as_slice() {
-            [t, a, d] => {
-                let new_trans =
-                    MoneyTransaction::new(t.clone(), a.parse::<f32>().unwrap(), Utc::now());
+            [title, amount, details, date] => {
+                let new_trans = MoneyTransaction::new(
+                    title.try_get_text_value().unwrap().clone(),
+                    *amount.try_get_float_value().unwrap(),
+                    date.try_get_date_value().unwrap().clone(),
+                );
                 db.add_transaction(&new_trans).await;
                 self.add_form.reset_fields();
                 self.submit_search_form(db).await;
