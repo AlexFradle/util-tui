@@ -15,22 +15,10 @@ Screens:
 - usb drive helper
     - detects when usbs are connected and allows easy mounting and unmounting
 
-- calendar
-    - screen showing month with indicators to denote events
-    - pane on the right that is a vertical timeline of the events of the selected day
-
-- money tracker
-    - enter everything that money was spent on in that day
-    - saved in database?
-
 - window layout helper
     - detects all connected displays
     - similar to windows
     - can change properties of the windows when connected (resolution etc)
-
-- uni grade tracker
-    - stored in json file
-    - create module which contains a test which has weight and marks
 
 - film/tv view/rating tracker
     - store rating and comments in database
@@ -42,7 +30,3 @@ Screens:
 - battery manager? (conv mode)
 - audio and playback manager
 - notification / reminder system using dunst?
-
-- markdown syntax tree creator
-- rust bevy graphics program
-- full stack, rust backend, deploy

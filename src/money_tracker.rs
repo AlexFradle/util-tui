@@ -4,10 +4,11 @@ use tui::{
     buffer::Buffer,
     layout::Rect,
     style::Modifier,
-    widgets::{BorderType, Borders, StatefulWidget},
+    widgets::{BorderType, Borders, StatefulWidget, Widget},
 };
 
 use crate::{
+    button::Button,
     db::{MoneyTransaction, DB},
     form::{
         DateField, FloatField, Form, FormField, FormFieldStyle, FormState, FormValue, IntegerField,
@@ -27,6 +28,11 @@ pub struct MoneyTrackerState {
     pub search_form_selected: bool,
     pub add_form_selected: bool,
     pub selected_transaction: u32,
+    current_page: u32,
+    num_of_pages: u32,
+    max_transactions: Option<u32>,
+    page_offsets: Vec<u32>,
+    filters: (String, f32, f32),
 }
 
 impl MoneyTracker {
@@ -64,10 +70,10 @@ impl MoneyTrackerState {
             true,
             FormFieldStyle::new("Title".to_owned()),
         )));
-        add_form.add_field(Box::new(IntegerField::new(
-            0,
-            0,
-            100000,
+        add_form.add_field(Box::new(FloatField::new(
+            0.,
+            0.,
+            100000.,
             true,
             FormFieldStyle::new("Amount".to_owned()),
         )));
@@ -88,6 +94,11 @@ impl MoneyTrackerState {
             search_form_selected: false,
             add_form_selected: false,
             selected_transaction: 0,
+            current_page: 1,
+            num_of_pages: 1,
+            max_transactions: None,
+            page_offsets: vec![0],
+            filters: ("".to_owned(), 0., 100000.),
         }
     }
 
@@ -100,21 +111,68 @@ impl MoneyTrackerState {
         );
     }
 
+    pub async fn get_next_page(&mut self, db: &mut DB) {
+        if self.current_page < self.num_of_pages {
+            self.current_page += 1;
+            self.selected_transaction = 0;
+            let max_trans = self.max_transactions.unwrap();
+            self.transactions = db
+                .query_transactions(
+                    &self.filters.0,
+                    self.filters.1,
+                    self.filters.2,
+                    max_trans,
+                    *self
+                        .page_offsets
+                        .get(self.current_page as usize - 1)
+                        .unwrap(),
+                )
+                .await;
+        }
+    }
+
+    pub async fn get_prev_page(&mut self, db: &mut DB) {
+        if self.current_page > 1 {
+            self.current_page -= 1;
+            self.selected_transaction = 0;
+            let max_trans = self.max_transactions.unwrap();
+            self.transactions = db
+                .query_transactions(
+                    &self.filters.0,
+                    self.filters.1,
+                    self.filters.2,
+                    max_trans,
+                    *self
+                        .page_offsets
+                        .get(self.current_page as usize - 1)
+                        .unwrap(),
+                )
+                .await;
+        }
+    }
+
     pub async fn submit_search_form(&mut self, db: &mut DB) {
         let fields = self.search_form.get_fields();
         let vals: Vec<&FormValue> = fields.iter().map(|f| f.get_internal_value()).collect();
         match vals.as_slice() {
             [k, min, max] => {
-                self.transactions.clear();
+                let keyword = k.try_get_text_value().unwrap();
+                let min = *min.try_get_float_value().unwrap();
+                let max = *max.try_get_float_value().unwrap();
+                self.filters = (keyword.clone(), min, max);
+                self.num_of_pages = (db
+                    .get_num_of_transaction_text_lines(&keyword, min, max)
+                    .await as f32
+                    / self.max_transactions.unwrap() as f32)
+                    .ceil() as u32;
                 self.transactions = db
-                    .query_transactions(
-                        k.try_get_text_value().unwrap(),
-                        *min.try_get_float_value().unwrap() as u32,
-                        *max.try_get_float_value().unwrap() as u32,
-                    )
+                    .query_transactions(&keyword, min, max, self.max_transactions.unwrap(), 0)
                     .await;
                 self.search_form.reset_fields();
                 self.selected_transaction = 0;
+                self.current_page = 1;
+                self.page_offsets = vec![0];
+                self.select_transaction_list();
             }
             [..] => {}
         };
@@ -128,6 +186,7 @@ impl MoneyTrackerState {
                 let new_trans = MoneyTransaction::new(
                     title.try_get_text_value().unwrap().clone(),
                     *amount.try_get_float_value().unwrap(),
+                    details.try_get_text_value().unwrap().clone(),
                     date.try_get_date_value().unwrap().clone(),
                 );
                 db.add_transaction(&new_trans).await;
@@ -167,6 +226,8 @@ impl StatefulWidget for MoneyTracker {
             width: area.width - area.width / 3,
             height: area.height,
         };
+        state.max_transactions = Some(right_pane.height as u32);
+
         let search_form_rect = Rect {
             x: area.x,
             y: area.y,
@@ -249,6 +310,22 @@ impl StatefulWidget for MoneyTracker {
         }
         Form.render(search_form_rect, buf, &mut state.search_form);
         Form.render(add_form_rect, buf, &mut state.add_form);
+        let add_button = Button::new("add".to_owned(), false);
+        let button_rect = Rect {
+            x: add_form_rect.x,
+            y: add_form_rect.y + add_form_rect.height - 2,
+            width: add_form_rect.width / 2 - 1,
+            height: 1,
+        };
+        add_button.render(button_rect, buf);
+        let add_button = Button::new("other".to_owned(), true);
+        let button_rect = Rect {
+            x: add_form_rect.x + add_form_rect.width / 2 + 1,
+            y: add_form_rect.y + add_form_rect.height - 2,
+            width: add_form_rect.width / 2 - 1,
+            height: 1,
+        };
+        add_button.render(button_rect, buf);
 
         let right_pane = Rect {
             x: right_pane.x + 1,
@@ -278,6 +355,18 @@ impl StatefulWidget for MoneyTracker {
         for (i, transaction) in state.transactions.iter().enumerate() {
             let num_of_days = transaction.date.num_days_from_ce();
             let mut offset_y = right_pane.y + (1 * i as u16) + (1 * sub_heading_count);
+            if offset_y >= right_pane.y + right_pane.height - 1 {
+                if state
+                    .page_offsets
+                    .get(state.current_page as usize)
+                    .is_none()
+                {
+                    state
+                        .page_offsets
+                        .push(state.page_offsets.iter().sum::<u32>() + i as u32);
+                }
+                break;
+            }
             // can binary search because always in order
             if day_indexes.binary_search(&i).is_ok() {
                 if state.get_selected_transaction().date.num_days_from_ce() == num_of_days {
@@ -286,7 +375,7 @@ impl StatefulWidget for MoneyTracker {
                         offset_y,
                         format!(
                             "{:━^1$}",
-                            transaction.date.format("%A %d %B %Y").to_string(),
+                            transaction.date.format("%a %d %B %Y").to_string(),
                             right_pane.width as usize
                         ),
                         AppStyles::Main.get(),
@@ -297,7 +386,7 @@ impl StatefulWidget for MoneyTracker {
                         offset_y,
                         format!(
                             "{:-^1$}",
-                            transaction.date.format("%A %d %B %Y").to_string(),
+                            transaction.date.format("%a %d %B %Y").to_string(),
                             right_pane.width as usize
                         ),
                         AppStyles::Accent.get(),
@@ -320,5 +409,15 @@ impl StatefulWidget for MoneyTracker {
             // + 11 because left align width 10 + 1 for £ sign
             buf.set_string(right_pane.x + 11, offset_y, &transaction.title, style);
         }
+        buf.set_string(
+            right_pane.x,
+            right_pane.y + right_pane.height - 1,
+            format!(
+                "{:^1$}",
+                format!("{}/{}", state.current_page, state.num_of_pages),
+                right_pane.width as usize,
+            ),
+            AppStyles::Main.get(),
+        );
     }
 }

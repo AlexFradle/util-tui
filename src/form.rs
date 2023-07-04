@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use chrono::{DateTime, Datelike, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, Utc};
 use crossterm::event::KeyCode;
 use log::info;
 use tui::{
@@ -56,7 +56,6 @@ impl FormValue {
     }
 
     pub fn try_get_text_value_mut(&mut self) -> Option<&mut String> {
-        let mut s: &mut String;
         if let FormValue::Text(s) = self {
             return Some(s);
         }
@@ -71,7 +70,6 @@ impl FormValue {
     }
 
     pub fn try_get_integer_value_mut(&mut self) -> Option<&mut u32> {
-        let mut i: &mut u32;
         if let FormValue::Integer(i) = self {
             return Some(i);
         }
@@ -86,7 +84,6 @@ impl FormValue {
     }
 
     pub fn try_get_float_value_mut(&mut self) -> Option<&mut f32> {
-        let mut i: &mut f32;
         if let FormValue::Float(i) = self {
             return Some(i);
         }
@@ -101,7 +98,6 @@ impl FormValue {
     }
 
     pub fn try_get_date_value_mut(&mut self) -> Option<&mut DateTime<Utc>> {
-        let mut i: &mut DateTime<Utc>;
         if let FormValue::Date(d) = self {
             return Some(d);
         }
@@ -113,7 +109,7 @@ pub trait FormField {
     fn get_display_value(&self) -> String;
     fn get_internal_value(&self) -> &FormValue;
     fn get_default_value(&self) -> &FormValue;
-    fn reset_internal_value(&mut self);
+    fn reset_value(&mut self);
     fn is_required(&self) -> bool;
     fn receive_input(&mut self, key: &KeyCode);
     fn get_style(&self) -> &FormFieldStyle;
@@ -170,7 +166,7 @@ impl FormField for TextField {
         self.value.try_get_text_value().unwrap().clone()
     }
 
-    fn reset_internal_value(&mut self) {
+    fn reset_value(&mut self) {
         self.value = self.default_value.clone();
     }
 
@@ -225,7 +221,7 @@ impl FormField for IntegerField {
         self.value.try_get_integer_value().unwrap().to_string()
     }
 
-    fn reset_internal_value(&mut self) {
+    fn reset_value(&mut self) {
         self.value = self.default_value.clone();
     }
 
@@ -236,7 +232,9 @@ impl FormField for IntegerField {
                 *current_value = (*current_value * 10) + num.to_digit(10).unwrap();
             }
             KeyCode::Backspace => {
-                *current_value /= 10;
+                if *current_value > 0 {
+                    *current_value /= 10;
+                }
             }
             _ => {}
         }
@@ -280,15 +278,19 @@ impl FormField for FloatField {
         self.display_value.clone()
     }
 
-    fn reset_internal_value(&mut self) {
+    fn reset_value(&mut self) {
         self.value = self.default_value.clone();
+        self.display_value = "".to_owned();
     }
 
     fn receive_input(&mut self, key: &KeyCode) {
         let current_value = self.value.try_get_float_value_mut().unwrap();
         match key {
             KeyCode::Char(num @ ('0'..='9' | '.')) => {
-                let new_value = format!("{}{}", current_value, num);
+                let mut new_value = num.to_string();
+                if *current_value > 0. {
+                    new_value = format!("{}{}", self.display_value, num);
+                }
                 if let Ok(n) = new_value.parse::<f32>() {
                     if n <= self.max {
                         self.display_value = new_value;
@@ -299,7 +301,11 @@ impl FormField for FloatField {
             KeyCode::Backspace => {
                 if self.display_value.len() > 0 {
                     self.display_value.truncate(self.display_value.len() - 1);
-                    *current_value = self.display_value.parse::<f32>().unwrap();
+                    if self.display_value.len() > 0 {
+                        *current_value = self.display_value.parse::<f32>().unwrap();
+                    } else {
+                        *current_value = 0.;
+                    }
                 }
             }
             _ => {}
@@ -342,7 +348,7 @@ impl FormField for DateField {
         format!("{:_<2} / {:_<2} / {:_<2}", self.day, self.month, self.year)
     }
 
-    fn reset_internal_value(&mut self) {
+    fn reset_value(&mut self) {
         self.value = self.default_value.clone();
         let date = self.value.try_get_date_value().unwrap();
         self.day = format!("{:0>2}", date.day());
@@ -354,7 +360,7 @@ impl FormField for DateField {
         let current_value = self.value.try_get_date_value_mut().unwrap();
         let num_of_days: HashMap<u32, u32> = HashMap::from([
             (1, 31),
-            (2, 28),
+            (2, 29),
             (3, 31),
             (4, 30),
             (5, 31),
@@ -371,7 +377,7 @@ impl FormField for DateField {
                 if self.day.len() < 2 {
                     self.day.push_str(&num.to_string());
                     let day = self.day.parse::<u32>().unwrap();
-                    if !(day >= 0 && day <= 31) {
+                    if day > 31 {
                         self.day.truncate(self.day.len() - 1);
                     }
                 } else if self.month.len() < 2 {
@@ -379,7 +385,11 @@ impl FormField for DateField {
                     if self.month.len() == 2 {
                         let day = self.day.parse::<u32>().unwrap();
                         let month = self.month.parse::<u32>().unwrap();
-                        if day > *num_of_days.get(&month).unwrap() {
+                        if month <= 12 {
+                            if day > *num_of_days.get(&month).unwrap() {
+                                self.month.truncate(self.month.len() - 1);
+                            }
+                        } else {
                             self.month.truncate(self.month.len() - 1);
                         }
                     }
@@ -389,7 +399,13 @@ impl FormField for DateField {
                         let day = self.day.parse::<u32>().unwrap();
                         let month = self.month.parse::<u32>().unwrap();
                         let year = self.year.parse::<u32>().unwrap();
-                        if NaiveDate::from_ymd_opt(year as i32, month, day).is_none() {
+                        let new_date = NaiveDate::from_ymd_opt(2000 + year as i32, month, day);
+                        if let Some(d) = new_date {
+                            *current_value = DateTime::from_utc(
+                                d.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+                                Utc,
+                            );
+                        } else {
                             self.year.truncate(self.year.len() - 1);
                         }
                     }
@@ -457,7 +473,7 @@ impl FormState {
     pub fn reset_fields(&mut self) {
         self.selected_field = 0;
         for field in &mut self.fields.iter_mut() {
-            field.reset_internal_value();
+            field.reset_value();
         }
     }
 
@@ -471,7 +487,7 @@ impl FormState {
     }
 
     pub fn send_input(&mut self, key: &KeyCode) {
-        &mut self.fields[self.selected_field as usize].receive_input(key);
+        self.fields[self.selected_field as usize].receive_input(key);
     }
 }
 

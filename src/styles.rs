@@ -63,7 +63,7 @@ impl ColorData {
 pub enum AppStyles {
     Main,
     Accent,
-    AccentBg,
+    Backgroud,
     InvertedMain,
     ProgressBar,
     CalendarCurDay,
@@ -71,6 +71,8 @@ pub enum AppStyles {
     CalendarDeselected,
     TitleText,
     TitleTextDeactivated,
+    ButtonSelected,
+    ButtonDeselected,
 }
 
 impl AppStyles {
@@ -78,7 +80,7 @@ impl AppStyles {
         match self {
             AppStyles::Main => Style::default().fg(COLORS.main),
             AppStyles::Accent => Style::default().fg(COLORS.accent),
-            AppStyles::AccentBg => Style::default().fg(COLORS.main).bg(COLORS.accent),
+            AppStyles::Backgroud => Style::default().fg(COLORS.background),
             AppStyles::InvertedMain => Style::default().fg(COLORS.background).bg(COLORS.main),
             AppStyles::ProgressBar => Style::default().fg(COLORS.main).bg(COLORS.background),
             AppStyles::CalendarCurDay => Style::default().fg(COLORS.accent),
@@ -90,6 +92,8 @@ impl AppStyles {
             AppStyles::TitleTextDeactivated => Style::default()
                 .fg(COLORS.accent)
                 .add_modifier(Modifier::BOLD),
+            AppStyles::ButtonDeselected => Style::default().bg(COLORS.accent).fg(COLORS.accent),
+            AppStyles::ButtonSelected => Style::default().bg(COLORS.main).fg(COLORS.main),
         }
     }
 }

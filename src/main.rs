@@ -10,17 +10,20 @@ use db::DB;
 use log::info;
 use screens::Screen;
 use sqlx::Connection;
-use std::{error::Error, io};
+use std::{error::Error, future::Future, io, pin::Pin};
 use tui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
 use util::{set_backlight, set_volume};
+use wait_popup::WaitPopup;
 
 mod app;
+mod button;
 mod calendar;
 mod clock;
 mod db;
+mod film_tracker;
 mod form;
 mod grade_tracker;
 mod money_tracker;
@@ -29,6 +32,7 @@ mod progress_bar;
 mod screens;
 mod styles;
 mod util;
+mod wait_popup;
 
 use crate::app::App;
 
@@ -69,19 +73,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
-        terminal.draw(|f| app.cur_screen.get_screen_func()(f, &mut app))?;
+        let c = terminal.draw(|f| {
+            app.cur_screen.get_screen_func()(f, &mut app);
+        })?;
 
+        let mut futs = Vec::new();
         if let Event::Key(key) = event::read()? {
             // quit if read_input returns true
-            if read_input(&mut app, &key).await {
-                app.db.conn.close();
-                return Ok(());
+            if read_input(&mut app, &key, &mut futs) {
+                break;
+            }
+        }
+        let ob = c.buffer.clone();
+        if !futs.is_empty() {
+            terminal.draw(|f| {
+                let wait_popup = WaitPopup::new(&ob);
+                f.render_widget(wait_popup, f.size());
+            })?;
+
+            // execute all futures from the read_input func
+            for f in futs {
+                f.await;
             }
         }
     }
+    app.db.conn.close();
+    return Ok(());
 }
 
-async fn read_input(app: &mut App, key: &KeyEvent) -> bool {
+fn read_input<'a>(
+    app: &'a mut App,
+    key: &KeyEvent,
+    futs: &mut Vec<Pin<Box<dyn Future<Output = ()> + 'a>>>,
+) -> bool {
+    // https://users.rust-lang.org/t/storing-futures/34564/8
+
     let capture_input = app.grade_state.show_form
         || app.money_state.add_form_selected
         || app.money_state.search_form_selected;
@@ -106,8 +132,12 @@ async fn read_input(app: &mut App, key: &KeyEvent) -> bool {
         }
 
         // Calendar Screen ----------------------------------------------------
-        (Screen::CalendarScreen, KeyCode::Down, _) => app.calendar_state.increment_month(-1),
-        (Screen::CalendarScreen, KeyCode::Up, _) => app.calendar_state.increment_month(1),
+        (Screen::CalendarScreen, KeyCode::Down, _) => {
+            futs.push(Box::pin(app.calendar_state.increment_month(-1)));
+        }
+        (Screen::CalendarScreen, KeyCode::Up, _) => {
+            futs.push(Box::pin(app.calendar_state.increment_month(1)));
+        }
         (Screen::CalendarScreen, KeyCode::Left, _) => {
             if app.calendar_state.show_popup {
                 app.calendar_state.increment_selected_event(-1)
@@ -192,18 +222,29 @@ async fn read_input(app: &mut App, key: &KeyEvent) -> bool {
         }
         (Screen::MoneyScreen, KeyCode::Enter, true) => {
             if app.money_state.search_form_selected {
-                app.money_state.submit_search_form(&mut app.db).await;
+                futs.push(Box::pin(app.money_state.submit_search_form(&mut app.db)));
             } else {
-                app.money_state.submit_add_form(&mut app.db).await;
+                futs.push(Box::pin(app.money_state.submit_add_form(&mut app.db)));
             }
-            app.money_state.select_transaction_list();
+        }
+        (Screen::MoneyScreen, KeyCode::Right, false) => {
+            futs.push(Box::pin(app.money_state.get_next_page(&mut app.db)));
+        }
+        (Screen::MoneyScreen, KeyCode::Left, false) => {
+            futs.push(Box::pin(app.money_state.get_prev_page(&mut app.db)));
         }
 
-        // All Scerens --------------------------------------------------------
+        // Film Screen --------------------------------------------------------
+        (Screen::FilmScreen, KeyCode::Enter, false) => {
+            futs.push(Box::pin(app.film_state.search_movie("dark".to_owned())));
+        }
+
+        // All Screens --------------------------------------------------------
         (_, KeyCode::Char('d'), false) => app.cur_screen = Screen::DashboardScreen,
         (_, KeyCode::Char('c'), false) => app.cur_screen = Screen::CalendarScreen,
         (_, KeyCode::Char('g'), false) => app.cur_screen = Screen::GradeScreen,
         (_, KeyCode::Char('m'), false) => app.cur_screen = Screen::MoneyScreen,
+        (_, KeyCode::Char('f'), false) => app.cur_screen = Screen::FilmScreen,
         (_, KeyCode::Char('q'), false) => return true,
 
         _ => {}

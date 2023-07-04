@@ -4,7 +4,6 @@ use std::{
     fs::File,
     ops::{AddAssign, SubAssign},
     path::PathBuf,
-    process::Command,
 };
 
 use figlet_rs::FIGfont;
@@ -162,13 +161,29 @@ pub fn draw_ascii_string(
 
 fn run_command(command: impl Into<String>) -> String {
     let command = command.into();
-    let output = Command::new("sh")
+    let output = std::process::Command::new("sh")
         .arg("-c")
         .arg(&command)
         .output()
         .expect("failed");
     info!(
         "cmd: {} -> {}",
+        command,
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    );
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+async fn run_command_async(command: impl Into<String>) -> String {
+    let command = command.into();
+    let output = tokio::process::Command::new("sh")
+        .arg("-c")
+        .arg(&command)
+        .output()
+        .await
+        .expect("failed");
+    info!(
+        "async cmd: {} -> {}",
         command,
         String::from_utf8_lossy(&output.stdout).into_owned()
     );
@@ -182,14 +197,15 @@ pub fn getcwd() -> String {
         .to_owned()
 }
 
-pub fn get_calendar_events(year: i32, month: u32, num_of_days: i64) -> String {
-    run_command(format!(
+pub async fn get_calendar_events(year: i32, month: u32, num_of_days: i64) -> String {
+    run_command_async(format!(
         "python {}/src/get_events.py {} {} {}",
         getcwd(),
         year,
         month,
         num_of_days
     ))
+    .await
 }
 
 pub fn set_backlight(new_val: u16) {
@@ -216,6 +232,10 @@ pub fn set_volume(new_val: u16) {
 
 pub fn get_xresources() -> String {
     run_command("xresources_as_json")
+}
+
+pub async fn search_imdb(name: &str) -> String {
+    run_command_async(format!("python {}/src/search_imdb.py {}", getcwd(), name)).await
 }
 
 /// Increment a value by an amount between upper and lower bounds

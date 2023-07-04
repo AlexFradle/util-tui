@@ -38,7 +38,7 @@ pub struct CalendarState {
 }
 
 impl CalendarState {
-    pub fn new() -> CalendarState {
+    pub async fn new() -> CalendarState {
         let local_time: DateTime<Local> = Local::now();
         let cur_day = local_time.day();
         let cur_month = local_time.month();
@@ -65,7 +65,7 @@ impl CalendarState {
             .weekday()
             .number_from_monday()
             - 1;
-        let data = CalendarState::get_data(cur_year, cur_month, num_of_days);
+        let data = CalendarState::get_data(cur_year, cur_month, num_of_days).await;
 
         CalendarState {
             data,
@@ -80,8 +80,8 @@ impl CalendarState {
         }
     }
 
-    fn get_data(year: i32, month: u32, num_of_days: i64) -> HashMap<u32, Vec<CalendarEvent>> {
-        let output = get_calendar_events(year, month, num_of_days);
+    async fn get_data(year: i32, month: u32, num_of_days: i64) -> HashMap<u32, Vec<CalendarEvent>> {
+        let output = get_calendar_events(year, month, num_of_days).await;
         let data: Vec<CalendarEvent> = serde_json::from_str(&output).unwrap_or(vec![]);
         let mut days_data: HashMap<u32, Vec<CalendarEvent>> = HashMap::new();
         for event in data {
@@ -92,12 +92,13 @@ impl CalendarState {
         return days_data;
     }
 
-    fn set_data(&mut self) {
+    async fn set_data(&mut self) {
         self.data = CalendarState::get_data(
             self.cur_year,
             self.cur_month.number_from_month(),
             self.num_of_days,
-        );
+        )
+        .await;
     }
 
     fn set_num_of_days(&mut self) {
@@ -127,7 +128,7 @@ impl CalendarState {
                 - 1;
     }
 
-    pub fn increment_month(&mut self, amount: i32) {
+    pub async fn increment_month(&mut self, amount: i32) {
         let mut new_month: Month = self.cur_month;
         for _ in 0..amount.abs() {
             if amount.is_positive() {
@@ -145,7 +146,7 @@ impl CalendarState {
         self.cur_month = new_month;
         self.set_start_day();
         self.set_num_of_days();
-        self.set_data();
+        self.set_data().await;
     }
 
     pub fn increment_selected_day(&mut self, amount: i32) {

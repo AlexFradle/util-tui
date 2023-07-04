@@ -4,6 +4,7 @@ use crate::{
     calendar::CalendarState,
     clock::ClockState,
     db::DB,
+    film_tracker::FilmTrackerState,
     grade_tracker::GradeTrackerState,
     money_tracker::MoneyTrackerState,
     screens::Screen,
@@ -19,24 +20,24 @@ pub struct App {
     pub cur_screen: Screen,
     pub db: DB,
     pub money_state: MoneyTrackerState,
+    pub film_state: FilmTrackerState,
 }
 
 impl App {
     pub async fn new() -> App {
         let mut db = DB::new().await;
         db.run_migrations().await;
-        let mut money_state = MoneyTrackerState::new();
-        money_state.transactions = db.get_all_transactions().await;
 
         App {
             brightness: get_brightness(),
             volume: get_volume(),
-            calendar_state: CalendarState::new(),
+            calendar_state: CalendarState::new().await,
             grade_state: GradeTrackerState::new(),
             clock_state: ClockState::new(),
             cur_screen: Screen::DashboardScreen,
             db,
-            money_state,
+            money_state: MoneyTrackerState::new(),
+            film_state: FilmTrackerState::new(),
         }
     }
 }
