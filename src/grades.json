@@ -1,202 +1,67 @@
 [
-    {
-        "name": "COM1001 Introduction to Software Engineering",
-        "grades": [
-            {
-                "name": "Group Project User Stories",
-                "percentage": 83.0,
-                "weight": 15.0
-            },
-            {
-                "name": "Software Engineering Quiz",
-                "percentage": 72.0,
-                "weight": 15.0
-            },
-            {
-                "name": "Ruby programming",
-                "percentage": 93.0,
-                "weight": 20.0
-            },
-            {
-                "name": "Iteration 1",
-                "percentage": 70.0,
-                "weight": 20.0
-            },
-            {
-                "name": "Iteration 2",
-                "percentage": 83.0,
-                "weight": 30.0
-            }
-        ]
-    },
-    {
-        "name": "COM1002 Foundations of Computer Science",
-        "grades": [
-            {
-                "name": "Quiz 1",
-                "percentage": 73.0,
-                "weight": 25.0
-            },
-            {
-                "name": "Quiz 2",
-                "percentage": 72.0,
-                "weight": 25.0
-            }
-        ]
-    },
-    {
-        "name": "COM1003 Java Programming",
-        "grades": [
-            {
-                "name": "Sem 1 Quiz 1",
-                "percentage": 100.0,
-                "weight": 8.0
-            },
-            {
-                "name": "Sem 1 Quiz 2",
-                "percentage": 99.0,
-                "weight": 8.0
-            },
-            {
-                "name": "Sem 1 Quiz 3",
-                "percentage": 69.0,
-                "weight": 8.0
-            },
-            {
-                "name": "Assignment 1",
-                "percentage": 92.0,
-                "weight": 6.0
-            },
-            {
-                "name": "Assignment 2",
-                "percentage": 95.0,
-                "weight": 10.0
-            },
-            {
-                "name": "Assignment 3",
-                "percentage": 99.0,
-                "weight": 10.0
-            },
-            {
-                "name": "Sem 2 Quiz 1",
-                "percentage": 80.0,
-                "weight": 5.0
-            },
-            {
-                "name": "Problem Sheet",
-                "percentage": 68.0,
-                "weight": 10.0
-            },
-            {
-                "name": "Sem 2 Quiz 2",
-                "percentage": 64.0,
-                "weight": 5.0
-            },
-            {
-                "name": "Sem 2 Assignment",
-                "percentage": 88.0,
-                "weight": 30.0
-            }
-        ]
-    },
-    {
-        "name": "COM1005 Machines and Intelligence",
-        "grades": [
-            {
-                "name": "Quiz 1",
-                "percentage": 38.0,
-                "weight": 30.0
-            },
-            {
-                "name": "Group Project",
-                "percentage": 85.0,
-                "weight": 20.0
-            },
-            {
-                "name": "Quiz 2a",
-                "percentage": 83.0,
-                "weight": 25.0
-            },
-            {
-                "name": "Quiz 2b",
-                "percentage": 62.0,
-                "weight": 25.0
-            }
-        ]
-    },
-    {
-        "name": "COM1006 Devices and Networks",
-        "grades": [
-            {
-                "name": "Threshold Test 1",
-                "percentage": 90.0,
-                "weight": 0.0
-            },
-            {
-                "name": "Threshold Test 2",
-                "percentage": 90.0,
-                "weight": 0.0
-            },
-            {
-                "name": "Threshold Test 3",
-                "percentage": 90.0,
-                "weight": 0.0
-            },
-            {
-                "name": "Threshold Test 4",
-                "percentage": 87.0,
-                "weight": 0.0
-            },
-            {
-                "name": "Threshold Test 5",
-                "percentage": 100.0,
-                "weight": 0.0
-            }
-        ]
-    },
-    {
-        "name": "COM1008 Web and Internet Technology",
-        "grades": [
-            {
-                "name": "Website Assignment",
-                "percentage": 85.0,
-                "weight": 60.0
-            },
-            {
-                "name": "JavaScript Assignment",
-                "percentage": 78.0,
-                "weight": 40.0
-            }
-        ]
-    },
-    {
-        "name": "COM1009 Introduction to Algorithms and Data Structures",
-        "grades": [
-            {
-                "name": "Week 3 Quiz",
-                "percentage": 80.0,
-                "weight": 5.0
-            },
-            {
-                "name": "Week 5 Quiz",
-                "percentage": 90.0,
-                "weight": 5.0
-            },
-            {
-                "name": "Week 7 Quiz",
-                "percentage": 100.0,
-                "weight": 5.0
-            },
-            {
-                "name": "Threshold Test",
-                "percentage": 90.0,
-                "weight": 0.0
-            },
-            {
-                "name": "Week 10 Quiz",
-                "percentage": 70.0,
-                "weight": 5.0
-            }
-        ]
-    }
+  {
+    "name": "COM31007 Software Development for Mobile Devices",
+    "grades": [
+      {
+        "name": "Quiz",
+        "percentage": 57.5,
+        "weight": 15.0
+      },
+      {
+        "name": "Group Project",
+        "percentage": 77.0,
+        "weight": 85.0
+      }
+    ]
+  },
+  {
+    "name": "COM3503 3D Computer Graphics",
+    "grades": [
+      {
+        "name": "Assignment",
+        "percentage": 89.0,
+        "weight": 50.0
+      },
+      {
+        "name": "Exam",
+        "percentage": 0.0,
+        "weight": 50.0
+      }
+    ]
+  },
+  {
+    "name": "MGT388 Accounting and Law for Engineers",
+    "grades": [
+      {
+        "name": "Exam",
+        "percentage": 0.0,
+        "weight": 100.0
+      }
+    ]
+  },
+  {
+    "name": "EAS171 Korean for Non-Specialists 1",
+    "grades": [
+      {
+        "name": "Mid-Semester Exam",
+        "percentage": 80.0,
+        "weight": 30.0
+      },
+      {
+        "name": "Final Exam",
+        "percentage": 0.0,
+        "weight": 70.0
+      }
+    ]
+  },
+  {
+    "name": "COM3610 Dissertation Project",
+    "grades": [
+      {
+        "name": "Dissertation",
+        "percentage": 0.0,
+        "weight": 100.0
+      }
+    ]
+  }
 ]

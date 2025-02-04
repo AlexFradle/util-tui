@@ -1,0 +1,112 @@
+[
+  {
+    "name": "COM2004 Data Driven Computing",
+    "grades": [
+      {
+        "name": "Assignment",
+        "percentage": 78.0,
+        "weight": 50.0
+      },
+      {
+        "name": "Exam",
+        "percentage": 60.0,
+        "weight": 50.0
+      }
+    ]
+  },
+  {
+    "name": "COM2008 System Design and Security",
+    "grades": [
+      {
+        "name": "Group Project",
+        "percentage": 71.0,
+        "weight": 40.0
+      },
+      {
+        "name": "Testing",
+        "percentage": 100.0,
+        "weight": 10.0
+      },
+      {
+        "name": "Exam",
+        "percentage": 54.0,
+        "weight": 50.0
+      }
+    ]
+  },
+  {
+    "name": "COM2009 Robotics",
+    "grades": [
+      {
+        "name": "Assignmet 1 (Individual)",
+        "percentage": 88.0,
+        "weight": 25.0
+      },
+      {
+        "name": "Assignmet 2 (Group)",
+        "percentage": 59.0,
+        "weight": 30.0
+      },
+      {
+        "name": "Exam",
+        "percentage": 66.0,
+        "weight": 45.0
+      }
+    ]
+  },
+  {
+    "name": "COM2107 Logic in Computer Science",
+    "grades": [
+        {
+            "name": "Exam",
+            "percentage": 76.0,
+            "weight": 100.0
+        }
+    ]
+  },
+  {
+    "name": "COM2108 Functional Programming",
+    "grades": [
+      {
+        "name": "Assignment Report",
+        "percentage": 80.0,
+        "weight": 40.0
+      },
+      {
+        "name": "Assignment Code",
+        "percentage": 100.0,
+        "weight": 60.0
+      }
+    ]
+  },
+  {
+    "name": "COM2109 Automata, Computation and Complexity",
+    "grades": [
+      {
+        "name": "Exam 1",
+        "percentage": 77.0,
+        "weight": 50.0
+      },
+      {
+        "name": "Exam 2",
+        "percentage": 55.0,
+        "weight": 50.0
+      }
+    ]
+  },
+  {
+    "name": "COM3420 Software Hut",
+    "grades": [
+      {
+        "name": "Critical Reflection",
+        "percentage": 61.0,
+        "weight": 30.0
+      },
+      {
+        "name": "Group Project",
+        "percentage": 99.6,
+        "weight": 70.0
+      }
+    ]
+  }
+]
